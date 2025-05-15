@@ -8,6 +8,28 @@ VIDEO_FILE_PATH = "testVideos/01_DBWT2.mp4"
 STRUCTURAL_SIMILARITY_THRESHOLD = 0.85
 
 
+def add_black_border(image, padding_size=50):
+    """
+        Add a black border to an image with given padding size.
+
+        Args:
+            image (np.ndarray): Input image (BGR format).
+            padding_size (int): Border size in pixels (default: 50).
+
+        Returns:
+            np.ndarray: Image with black borders.
+    """
+    return cv2.copyMakeBorder(
+        image,
+        top=padding_size,
+        bottom=padding_size,
+        left=padding_size,
+        right=padding_size,
+        borderType=cv2.BORDER_CONSTANT,
+        value=[0, 0, 0]
+    )
+
+
 def extract_roi_from_image_for_slide(image_path: str, min_width: int = 100, min_height: int = 100,
                                      aspect_ratio_range: tuple = (1.3, 2.0)):
     """
@@ -24,12 +46,15 @@ def extract_roi_from_image_for_slide(image_path: str, min_width: int = 100, min_
         np.ndarray: Extracted RoI image or None if no valid region is found.
     """
     frame = cv2.imread(image_path, cv2.IMREAD_COLOR)
-    if frame is None:
-        raise ValueError(f" Error: Image '{image_path}' couldn't be loaded.")
 
-    gray_scale_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    gaussian_blurred_image = cv2.GaussianBlur(gray_scale_image, (13, 13), cv2.BORDER_DEFAULT)
-    canny_edges = cv2.Canny(gaussian_blurred_image, 50, 150)
+    if frame is None:
+        print(f" Error: Image '{image_path}' couldn't be loaded.")
+
+    # Add a black border to ensure edge detection works, when the image only contains the slide.
+    padded_image = add_black_border(frame)
+
+    gray_scale_image = cv2.cvtColor(padded_image, cv2.COLOR_BGR2GRAY)
+    canny_edges = cv2.Canny(gray_scale_image, 50, 150)
 
     # Using cv2.RETR_EXTERNAL to detect only the outer contours,
     # inner contours are not relevant for finding the biggest rectangle (the slide).
@@ -140,4 +165,4 @@ def detect_slide_transitions():
 
 
 if __name__ == "__main__":
-    detect_slide_transitions()
+    extract_roi_from_image_for_slide("test_Images/only_slide_dbwt2.png")
