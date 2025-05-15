@@ -1,10 +1,61 @@
 import cv2
+import numpy as np
 from skimage.metrics import structural_similarity as ssim
 
 VIDEO_FILE_PATH = "testVideos/01_DBWT2.mp4"
 
 # Threshold for detecting slide changes
 STRUCTURAL_SIMILARITY_THRESHOLD = 0.85
+
+
+def extract_roi_from_image_for_slide(image_path: str, min_width: int = 100, min_height: int = 100,
+                                     aspect_ratio_range: tuple = (1.3, 2.0)):
+    """
+    Loads an image, preprocesses it (grayscale, edge detection, contour extraction),
+    and finds the largest rectangular Region of Interest (RoI).
+
+    Args:
+        image_path (str): Path to the input image file.
+        min_width (int): Minimum width of a valid RoI.
+        min_height (int): Minimum height of a valid RoI.
+        aspect_ratio_range (tuple): Acceptable aspect ratio range (width/height).
+
+    Returns:
+        np.ndarray: Extracted RoI image or None if no valid region is found.
+    """
+    frame = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    if frame is None:
+        raise ValueError(f" Error: Image '{image_path}' couldn't be loaded.")
+
+    gray_scale_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    gaussian_blurred_image = cv2.GaussianBlur(gray_scale_image, (13, 13), cv2.BORDER_DEFAULT)
+    canny_edges = cv2.Canny(gaussian_blurred_image, 50, 150)
+
+    # Using cv2.RETR_EXTERNAL to detect only the outer contours,
+    # inner contours are not relevant for finding the biggest rectangle (the slide).
+    contours, _ = cv2.findContours(canny_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Find the largest rectangle (the slide)
+    biggest_rectangle = None
+    max_area = 0
+
+    for cnt in contours:
+        top_left_x, top_left_y, width, height = cv2.boundingRect(cnt)
+        area = width * height
+
+        if area > max_area and width > min_width and height > min_height and aspect_ratio_range[0] < width / height < \
+                aspect_ratio_range[1]:
+            biggest_rectangle = (top_left_x, top_left_y, width, height)
+            max_area = area
+
+    # Extract RoI if a valid region is found
+    if biggest_rectangle:
+        top_left_x, top_left_y, width, height = biggest_rectangle
+        roi = frame[top_left_y:top_left_y + height, top_left_x:top_left_x + width]
+        return roi
+    else:
+        print("No valid slide region found.")
+        return None
 
 
 def compute_image_similarity(image1, image2):
