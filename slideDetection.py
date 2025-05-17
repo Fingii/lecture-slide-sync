@@ -1,11 +1,46 @@
 import cv2
 import numpy as np
+import pyautogui
 from skimage.metrics import structural_similarity as ssim
 
 VIDEO_FILE_PATH = "testVideos/01_DBWT2.mp4"
+DEBUG_MODE = True
 
 # Threshold for detecting slide changes
 STRUCTURAL_SIMILARITY_THRESHOLD = 0.85
+
+
+def show_image_resized(image, window_name="default", scale_factor=0.8):
+    """
+    DEBUG ONLY: DON'T USE IN PRODUCTIVE CODE.
+    Displays an image in an OpenCV window, resizes it to fit the screen while keeping the title visible.
+
+    Args:
+        image (np.ndarray): Image to be displayed.
+        window_name (str): Name of the OpenCV window.
+        scale_factor (float): Scaling factor to reduce the image size (default: 0.9 for 90% of the screen).
+    """
+    # Get the screen resolution
+    screen_width, screen_height = pyautogui.size()
+    image_height, image_width = image.shape[:2]
+
+    # Calculate the scaling factor to ensure the window fits within the screen
+    scale_factor = min((screen_width * scale_factor) / image_width, (screen_height * scale_factor) / image_height)
+    resized_image = cv2.resize(image, (int(image_width * scale_factor), int(image_height * scale_factor)))
+
+    # Create the window and set its size
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(window_name, int(image_width * scale_factor), int(image_height * scale_factor))
+
+    # Center the window on the screen
+    x_pos = (screen_width - int(image_width * scale_factor)) // 2
+    y_pos = (screen_height - int(image_height * scale_factor)) // 2
+    cv2.moveWindow(window_name, x_pos, y_pos)
+
+    # Display the image
+    cv2.imshow(window_name, resized_image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
 def add_black_border(image, padding_size=50):
@@ -45,6 +80,7 @@ def extract_roi_from_image_for_slide(image_path: str, min_width: int = 100, min_
     Returns:
         np.ndarray: Extracted RoI image or None if no valid region is found.
     """
+
     frame = cv2.imread(image_path, cv2.IMREAD_COLOR)
 
     if frame is None:
@@ -60,6 +96,9 @@ def extract_roi_from_image_for_slide(image_path: str, min_width: int = 100, min_
     # inner contours are not relevant for finding the biggest rectangle (the slide).
     contours, _ = cv2.findContours(canny_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    if DEBUG_MODE:
+        visualization_image = padded_image.copy()
+
     # Find the largest rectangle (the slide)
     biggest_rectangle = None
     max_area = 0
@@ -67,6 +106,10 @@ def extract_roi_from_image_for_slide(image_path: str, min_width: int = 100, min_
     for cnt in contours:
         top_left_x, top_left_y, width, height = cv2.boundingRect(cnt)
         area = width * height
+
+        if DEBUG_MODE:
+            cv2.rectangle(visualization_image, (top_left_x, top_left_y),
+                          (top_left_x + width, top_left_y + height), (0, 0, 255), 2)
 
         if area > max_area and width > min_width and height > min_height and aspect_ratio_range[0] < width / height < \
                 aspect_ratio_range[1]:
@@ -76,7 +119,21 @@ def extract_roi_from_image_for_slide(image_path: str, min_width: int = 100, min_
     # Extract RoI if a valid region is found
     if biggest_rectangle:
         top_left_x, top_left_y, width, height = biggest_rectangle
-        roi = frame[top_left_y:top_left_y + height, top_left_x:top_left_x + width]
+        roi = padded_image[top_left_y:top_left_y + height, top_left_x:top_left_x + width]
+
+        if DEBUG_MODE:
+            # Draw contours on a copy of the original image for visualization
+            contour_visualization = padded_image.copy()
+            cv2.drawContours(contour_visualization, contours, -1, (0, 0, 255), 2)
+
+            show_image_resized(frame)
+            show_image_resized(padded_image)
+            show_image_resized(gray_scale_image)
+            show_image_resized(canny_edges)
+            show_image_resized(contour_visualization)
+            show_image_resized(visualization_image)
+            show_image_resized(roi)
+
         return roi
     else:
         print("No valid slide region found.")
@@ -165,4 +222,4 @@ def detect_slide_transitions():
 
 
 if __name__ == "__main__":
-    extract_roi_from_image_for_slide("test_Images/only_slide_dbwt2.png")
+    detect_slide_transitions()
