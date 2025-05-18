@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import pyautogui
 from skimage.metrics import structural_similarity as ssim
+import pytesseract
+import re
 
 VIDEO_FILE_PATH = "testVideos/01_DBWT2.mp4"
 DEBUG_MODE = True
@@ -41,6 +43,63 @@ def show_image_resized(image, window_name="default", scale_factor=0.8):
     cv2.imshow(window_name, resized_image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
+
+def check_all_keywords_in_image(frame, keywords_to_be_matched=None, confidence_threshold=80):
+    """
+    Checks whether all specified keywords appear in the image using OCR.
+
+    Args:
+        frame: OpenCV image (BGR).
+        keywords_to_be_matched: List of expected words (case-insensitive).
+        confidence_threshold: Minimum OCR confidence level (0-100).
+
+    Returns:
+        bool: True if all keywords are found, False otherwise.
+    """
+    if keywords_to_be_matched is None:
+        keywords_to_be_matched = ["UNIVERSITY", "FH", "AACHEN", "OF", "APPLIED", "SCIENCES"]
+
+    # Convert image for OCR processing
+    frame_RGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+    data = pytesseract.image_to_data(
+        frame_RGB,
+        output_type=pytesseract.Output.DICT,
+        config="--psm 11 --oem 3"  # psm11 because we don't care about the order of the text
+    )
+
+    found_keywords = {}  # Stores detected words
+
+    for i in range(len(data["text"])):
+        text = data["text"][i].strip()
+        conf = int(data["conf"][i])
+
+        if conf < confidence_threshold:
+            continue
+
+        # Check if detected text matches any expected keywords
+        for keyword in keywords_to_be_matched:
+            # Has to be a standalone word and case-insensitive
+            if keyword not in found_keywords and re.search(rf"\b{keyword}\b", text, re.IGNORECASE):
+                x, y, w, h = data["left"][i], data["top"][i], data["width"][i], data["height"][i]
+                found_keywords[keyword] = (x, y, x + w, y + h)  # (x1, y1, x2, y2)
+
+    # Ensure all keywords are found before returning True
+    if set(keywords_to_be_matched).issubset(set(found_keywords.keys())):
+
+        if DEBUG_MODE:
+
+            # Draw bounding boxes for all found keywords
+            for keyword, (x1, y1, x2, y2) in found_keywords.items():
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green box
+                cv2.putText(frame, keyword, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+            show_image_resized(frame)
+
+        return True
+
+    return False
 
 
 def add_black_border(image, padding_size=50):
