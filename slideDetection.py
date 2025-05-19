@@ -5,7 +5,6 @@ from skimage.metrics import structural_similarity as ssim
 import pytesseract
 import re
 
-VIDEO_FILE_PATH = "testVideos/01_DBWT2.mp4"
 DEBUG_MODE = False
 
 # Threshold for detecting slide changes
@@ -260,7 +259,7 @@ def compute_image_similarity(image1, image2):
     return similarity_score
 
 
-def detect_slide_transitions():
+def detect_slide_transitions(video_file_path):
     """
     Analyzes a video file to detect slide transitions based on structural similarity.
 
@@ -269,12 +268,11 @@ def detect_slide_transitions():
     below a predefined threshold.
 
     Args:
-        None (uses global VIDEO_FILE_PATH to access the video).
-
+        video_file_path (str): Path to the video file that will be analyzed for slide transitions.
     Returns:
         None (prints detected slide change timestamps to the console).
     """
-    video_capture = cv2.VideoCapture(VIDEO_FILE_PATH)
+    video_capture = cv2.VideoCapture(video_file_path)
     if not video_capture.isOpened():
         print("Error: Unable to open the video file.")
         return
@@ -313,4 +311,4 @@ def detect_slide_transitions():
 
 
 if __name__ == "__main__":
-    detect_slide_transitions()
+    detect_slide_transitions("tests/test_data/videos/01_DBWT2.mp4")
