@@ -6,7 +6,7 @@ import pytesseract
 import re
 
 VIDEO_FILE_PATH = "testVideos/01_DBWT2.mp4"
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 # Threshold for detecting slide changes
 STRUCTURAL_SIMILARITY_THRESHOLD = 0.85
@@ -100,6 +100,38 @@ def check_all_keywords_in_image(frame, keywords_to_be_matched=None, confidence_t
         return True
 
     return False
+
+
+def find_first_slide(video_path, max_seconds=30):
+    """
+    Searches the video for a slide shown in the video by utilizing check_all_keywords_in_image() for every frame
+    until the slide which contains the keywords shows up
+
+    Args:
+        video_path: Path to the video file.
+        max_seconds: Maximum duration (in seconds) to scan the video for a slide.
+
+    Returns:
+        Optional[np.ndarray]: The frame containing the text if found, otherwise None.
+    """
+    cap = cv2.VideoCapture(video_path)
+
+    fps = int(cap.get(cv2.CAP_PROP_FPS))  # Get frames per second (FPS) from video
+    max_attempts = max_seconds * fps  # Calculate max frames to check
+
+    for _ in range(max_attempts):
+
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        found = check_all_keywords_in_image(frame)
+        if found:
+            cap.release()
+            return frame  # Return the frame where keywords were detected
+
+    cap.release()
+    return None
 
 
 def add_black_border(image, padding_size=50):
