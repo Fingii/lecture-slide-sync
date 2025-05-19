@@ -155,29 +155,24 @@ def add_black_border(image, padding_size=50):
     )
 
 
-def extract_roi_from_image_for_slide(image_path: str, min_width: int = 100, min_height: int = 100,
-                                     aspect_ratio_range: tuple = (1.3, 2.0)):
+def extract_slide_roi_from_image(image: np.ndarray, min_width=500, min_height=500, min_area=5000):
     """
     Loads an image, preprocesses it (grayscale, edge detection, contour extraction),
-    and finds the largest rectangular Region of Interest (RoI).
+    and finds the largest rectangular Region of Interest (RoI) which represents the entire slide.
 
     Args:
-        image_path (str): Path to the input image file.
-        min_width (int): Minimum width of a valid RoI.
-        min_height (int): Minimum height of a valid RoI.
-        aspect_ratio_range (tuple): Acceptable aspect ratio range (width/height).
-
+        image (np.ndarray): Input image as an OpenCV array.
+        min_width (int): Minimum width for a valid RoI.
+        min_height (int): Minimum height for a valid RoI.
+        min_area (int): Minimum area for a valid RoI.
     Returns:
         np.ndarray: Extracted RoI image or None if no valid region is found.
     """
 
-    frame = cv2.imread(image_path, cv2.IMREAD_COLOR)
-
-    if frame is None:
-        print(f" Error: Image '{image_path}' couldn't be loaded.")
+    padding = 5
 
     # Add a black border to ensure edge detection works, when the image only contains the slide.
-    padded_image = add_black_border(frame)
+    padded_image = add_black_border(image, padding)
 
     gray_scale_image = cv2.cvtColor(padded_image, cv2.COLOR_BGR2GRAY)
     canny_edges = cv2.Canny(gray_scale_image, 50, 150)
@@ -186,47 +181,46 @@ def extract_roi_from_image_for_slide(image_path: str, min_width: int = 100, min_
     # inner contours are not relevant for finding the biggest rectangle (the slide).
     contours, _ = cv2.findContours(canny_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    if not contours:
+        print("No contours found.")
+        return None
+
+    # Find the largest contour and extract coordinates
+    largest_contour = max(contours, key=cv2.contourArea)
+    largest_contour_top_left_x, largest_contour_top_left_y, largest_contour_width, largest_contour_height = (
+        cv2.boundingRect(largest_contour))
+
     if DEBUG_MODE:
+
         visualization_image = padded_image.copy()
+        # Extract RoI if a valid region is found
+        roi = padded_image[largest_contour_top_left_y:largest_contour_top_left_y + largest_contour_height,
+              largest_contour_top_left_x:largest_contour_top_left_x + largest_contour_width]
 
-    # Find the largest rectangle (the slide)
-    biggest_rectangle = None
-    max_area = 0
+        for cnt in contours:
+            top_left_x_debug, top_left_y_debug, width_debug, height_debug = cv2.boundingRect(cnt)
+            cv2.rectangle(visualization_image, (top_left_x_debug, top_left_y_debug),
+                          (top_left_x_debug + width_debug, top_left_y_debug + height_debug), (0, 0, 255), 2)
 
-    for cnt in contours:
-        top_left_x, top_left_y, width, height = cv2.boundingRect(cnt)
-        area = width * height
+        contour_visualization = padded_image.copy()
+        cv2.drawContours(contour_visualization, contours, -1, (0, 0, 255), 2)
 
-        if DEBUG_MODE:
-            cv2.rectangle(visualization_image, (top_left_x, top_left_y),
-                          (top_left_x + width, top_left_y + height), (0, 0, 255), 2)
+        show_image_resized(image)
+        show_image_resized(padded_image)
+        show_image_resized(gray_scale_image)
+        show_image_resized(canny_edges)
+        show_image_resized(contour_visualization)
+        show_image_resized(visualization_image)
+        show_image_resized(roi)
 
-        if area > max_area and width > min_width and height > min_height and aspect_ratio_range[0] < width / height < \
-                aspect_ratio_range[1]:
-            biggest_rectangle = (top_left_x, top_left_y, width, height)
-            max_area = area
-
-    # Extract RoI if a valid region is found
-    if biggest_rectangle:
-        top_left_x, top_left_y, width, height = biggest_rectangle
-        roi = padded_image[top_left_y:top_left_y + height, top_left_x:top_left_x + width]
-
-        if DEBUG_MODE:
-            # Draw contours on a copy of the original image for visualization
-            contour_visualization = padded_image.copy()
-            cv2.drawContours(contour_visualization, contours, -1, (0, 0, 255), 2)
-
-            show_image_resized(frame)
-            show_image_resized(padded_image)
-            show_image_resized(gray_scale_image)
-            show_image_resized(canny_edges)
-            show_image_resized(contour_visualization)
-            show_image_resized(visualization_image)
-            show_image_resized(roi)
-
-        return roi
+    area = largest_contour_width * largest_contour_height
+    print(area)
+    if largest_contour_width >= min_width and largest_contour_height >= min_height and area >= min_area:
+        # Adjust RoI coordinates by removing padding (+1 for zero-based index)
+        return [largest_contour_top_left_x - padding + 1, largest_contour_top_left_y - padding + 1,
+                largest_contour_width, largest_contour_height]
     else:
-        print("No valid slide region found.")
+        print("Detected RoI is too small to be valid.")
         return None
 
 
