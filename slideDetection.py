@@ -222,7 +222,7 @@ def extract_slide_roi_coordinates_from_image(
         min_height: Minimum height for a valid RoI.
         min_area: Minimum area for a valid RoI.
     Returns:
-        Extracted RoI coordinates (top-left-x, top-left-y, width, height) or None if no valid region is found.
+        Extracted RoI coordinates [top-left-x, top-left-y, bottom_right_x, bottom_right_y] or None if no valid region is found.
     """
 
     # Add a black border to ensure edge detection works, when the image only contains the slide.
@@ -258,15 +258,20 @@ def extract_slide_roi_coordinates_from_image(
         largest_contour_height,
     ) = cv2.boundingRect(largest_contour)
 
+    largest_contour_bottom_right_x: int = (
+        largest_contour_top_left_x + largest_contour_width
+    )
+    largest_contour_bottom_right_y: int = (
+        largest_contour_top_left_y + largest_contour_height
+    )
+
     if DEBUG_MODE:
         visualization_image: np.ndarray = padded_image.copy()
 
         # Extract RoI if a valid region is found
         roi: np.ndarray = padded_image[
-            largest_contour_top_left_y : largest_contour_top_left_y
-            + largest_contour_height,
-            largest_contour_top_left_x : largest_contour_top_left_x
-            + largest_contour_width,
+            largest_contour_top_left_y:largest_contour_bottom_right_y,
+            largest_contour_top_left_x:largest_contour_bottom_right_x,
         ]
 
         for cnt in contours:
@@ -292,18 +297,22 @@ def extract_slide_roi_coordinates_from_image(
         show_image_resized(visualization_image, "Contour Bounding Boxes Image")
         show_image_resized(roi, "Extracted RoI Image")
 
-    area: int = largest_contour_width * largest_contour_height
+    largest_contour_area: int = largest_contour_width * largest_contour_height
     if (
         largest_contour_width >= min_width
         and largest_contour_height >= min_height
-        and area >= min_area
+        and largest_contour_area >= min_area
     ):
-        # Adjust RoI coordinates by removing padding (+1 for zero-based index)
+
+        image_width = image.shape[1]
+        image_height = image.shape[0]
+
+        # Adjust RoI coordinates by removing padding
         return [
-            max(0, largest_contour_top_left_x - padding + 1),
-            max(0, largest_contour_top_left_y - padding + 1),
-            largest_contour_width,
-            largest_contour_height,
+            max(0, largest_contour_top_left_x - padding),
+            max(0, largest_contour_top_left_y - padding),
+            min(image_width, largest_contour_bottom_right_x - padding),
+            min(image_height, largest_contour_bottom_right_y - padding),
         ]
     else:
         print("Detected RoI is too small to be valid.")
@@ -358,10 +367,12 @@ def detect_slide_transitions(video_file_path: str) -> None:
         first_slide_frame
     )
 
-    top_left_x: int = roi_values[0]
-    top_left_y: int = roi_values[1]
-    width: int = roi_values[2]
-    height: int = roi_values[3]
+    top_left_x: int
+    top_left_y: int
+    bottom_right_x: int
+    bottom_right_y: int
+
+    top_left_x, top_left_y, bottom_right_x, bottom_right_y = roi_values
 
     video_capture: cv2.VideoCapture = cv2.VideoCapture(video_file_path)
     if not video_capture.isOpened():
@@ -380,7 +391,7 @@ def detect_slide_transitions(video_file_path: str) -> None:
         current_video_frame: np.ndarray
         frame_read_successful, current_video_frame = video_capture.read()
         current_video_frame_with_adjusted_roi: np.ndarray = current_video_frame[
-            top_left_y : top_left_y + height, top_left_x : top_left_x + width
+            top_left_y:bottom_right_y, top_left_x:bottom_right_x
         ]
 
         if DEBUG_MODE:
