@@ -4,7 +4,7 @@ import pyautogui
 from skimage.metrics import structural_similarity as ssim
 import pytesseract
 import re
-from typing import Optional, Union
+from typing import Union
 
 DEBUG_MODE = False
 
@@ -60,7 +60,7 @@ def show_image_resized(
 
 def check_all_keywords_in_image(
     frame: np.ndarray,
-    keywords_to_be_matched: Optional[set[str]] = None,
+    keywords_to_be_matched: set[str] | None = None,
     confidence_threshold: int = 80,
 ) -> bool:
     """
@@ -151,7 +151,7 @@ def check_all_keywords_in_image(
     return True
 
 
-def find_first_slide(video_path: str, max_seconds: int = 30) -> Optional[np.ndarray]:
+def find_first_slide(video_path: str, max_seconds: int = 30) -> np.ndarray | None:
     """
     Searches the video for a slide containing specific keywords by checking frames
     until either the slide is found or the maximum duration is reached.
@@ -168,7 +168,7 @@ def find_first_slide(video_path: str, max_seconds: int = 30) -> Optional[np.ndar
     fps: float = float(cap.get(cv2.CAP_PROP_FPS))  # Frames per second (FPS) from video
     max_attempts: int = int(max_seconds * fps)  # Calculate max frames to check
 
-    result: Optional[np.ndarray] = None
+    result: np.ndarray | None = None
 
     for _ in range(max_attempts):
         ret: bool
@@ -211,7 +211,7 @@ def add_black_border(image, padding_size=50):
 
 def extract_slide_roi_coordinates_from_image(
     image: np.ndarray, min_width: int = 500, min_height: int = 500, min_area: int = 5000
-) -> Optional[list[int]]:
+) -> list[int] | None:
     """
     Loads an image, preprocesses it (grayscale, edge detection, contour extraction),
     and finds the largest rectangular Region of Interest (RoI) which represents the entire slide.
@@ -362,8 +362,8 @@ def detect_slide_transitions(video_file_path: str) -> None:
         None (prints detected slide change timestamps to the console).
     """
 
-    first_slide_frame: Optional[np.ndarray] = find_first_slide(video_file_path)
-    roi_values: Optional[list[int]] = extract_slide_roi_coordinates_from_image(
+    first_slide_frame: np.ndarray | None = find_first_slide(video_file_path)
+    roi_values: list[int] | None = extract_slide_roi_coordinates_from_image(
         first_slide_frame
     )
 
@@ -381,7 +381,7 @@ def detect_slide_transitions(video_file_path: str) -> None:
 
     fps: float = video_capture.get(cv2.CAP_PROP_FPS)
     current_frame_index: int = 0
-    previous_video_frame: Optional[np.ndarray] = None
+    previous_video_frame: np.ndarray | None = None
 
     print("Starting video analysis")
     while video_capture.isOpened():
@@ -431,3 +431,4 @@ def detect_slide_transitions(video_file_path: str) -> None:
 
 if __name__ == "__main__":
     detect_slide_transitions("tests/test_data/videos/dbwt1/dbwt1_01.mp4")
+    # print("Hi")

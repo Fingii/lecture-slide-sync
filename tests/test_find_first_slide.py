@@ -2,7 +2,6 @@ import cv2
 import pytest
 import numpy as np
 from pathlib import Path
-from typing import Optional
 from slideDetection import find_first_slide
 
 
@@ -90,8 +89,8 @@ def test_finds_correct_first_slide_same_image_dimensions(
         expected_slide_path: Path to the manually captured first slide image.
 
     """
-    result_frame: Optional[np.ndarray] = find_first_slide(str(video_path))
-    expected_frame: Optional[np.ndarray] = cv2.imread(
+    result_frame: np.ndarray | None = find_first_slide(str(video_path))
+    expected_frame: np.ndarray | None = cv2.imread(
         str(expected_slide_path), cv2.IMREAD_UNCHANGED
     )
 
@@ -122,8 +121,8 @@ def test_rejects_non_first_slide_same_image_dimensions(
         video_path: Path to the lecture video file.
         not_first_slide_path: Path to a manually captured slide that is NOT the first one.
     """
-    result_frame: Optional[np.ndarray] = find_first_slide(str(video_path))
-    expected_frame: Optional[np.ndarray] = cv2.imread(
+    result_frame: np.ndarray | None = find_first_slide(str(video_path))
+    expected_frame: np.ndarray | None = cv2.imread(
         str(not_first_slide_path), cv2.IMREAD_UNCHANGED
     )
 
