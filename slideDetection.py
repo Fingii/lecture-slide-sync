@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import pyautogui
 from skimage.metrics import structural_similarity as ssim
-import pytesseract
+import pytesseract  # type: ignore
 import re
 from typing import Union
 
@@ -31,7 +31,7 @@ def show_image_resized(
     image_height: int = image.shape[0]
     image_width: int = image.shape[1]
 
-    scale_factor: float = min(
+    scale_factor = min(
         (screen_width * scale_factor) / image_width,
         (screen_height * scale_factor) / image_height,
     )  # Calculate optimal scale factor to fit screen
@@ -99,7 +99,7 @@ def check_all_keywords_in_image(
     found_keywords: set[str] = set()
 
     for i in range(len(data["text"])):
-        text: str = data["text"][i].strip()
+        text: str = str(data["text"][i]).strip()
         conf: int = int(data["conf"][i])
 
         if conf < confidence_threshold:
@@ -114,10 +114,10 @@ def check_all_keywords_in_image(
                 found_keywords.add(keyword)
 
                 if DEBUG_MODE:
-                    textbox_leftmost_x_position: int = data["left"][i]
-                    textbox_topmost_y_position: int = data["top"][i]
-                    text_box_width: int = data["width"][i]
-                    text_box_height: int = data["height"][i]
+                    textbox_leftmost_x_position: int = int(data["left"][i])
+                    textbox_topmost_y_position: int = int(data["top"][i])
+                    text_box_width: int = int(data["width"][i])
+                    text_box_height: int = int(data["height"][i])
 
                     # Extracting position of textbox (x1, y1, x2, y2)
                     bounding_boxes[keyword] = (
@@ -236,10 +236,10 @@ def extract_slide_roi_coordinates_from_image(
 
     # Using cv2.RETR_EXTERNAL to detect only the outer contours,
     # inner contours are not relevant for finding the biggest rectangle (the slide).
-    contours: tuple[np.ndarray, ...]
-    contours, _ = cv2.findContours(
+    contours_sequence, _ = cv2.findContours(
         canny_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
     )
+    contours: tuple[np.ndarray, ...] = tuple(contours_sequence)
 
     if not contours:
         print("No contours found.")
