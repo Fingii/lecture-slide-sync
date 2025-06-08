@@ -173,9 +173,6 @@ def find_first_slide(
     fps: float = float(cap.get(cv2.CAP_PROP_FPS))  # Frames per second (FPS) from video
     max_attempts: int = int(max_seconds * fps)  # Calculate max frames to check
 
-    result: np.ndarray | None = None
-    frame_count: int = 0
-
     for frame_count in range(max_attempts):
         ret: bool
         frame: np.ndarray
@@ -185,12 +182,11 @@ def find_first_slide(
             break
 
         if check_all_keywords_in_image(frame):
-            result = frame
-            break
+            cap.release()
+            return frame, frame_count
 
     cap.release()
-
-    return result, frame_count
+    return None
 
 
 def add_black_border(image, padding_size=50):
