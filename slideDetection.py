@@ -151,7 +151,9 @@ def check_all_keywords_in_image(
     return True
 
 
-def find_first_slide(video_path: str, max_seconds: int = 30) -> np.ndarray | None:
+def find_first_slide(
+    video_path: str, max_seconds: int = 30
+) -> tuple[np.ndarray, int] | None:
     """
     Searches the video for a slide containing specific keywords by checking frames
     until either the slide is found or the maximum duration is reached.
@@ -161,7 +163,10 @@ def find_first_slide(video_path: str, max_seconds: int = 30) -> np.ndarray | Non
         max_seconds: Maximum duration (in seconds) to scan the video for a slide.
 
     Returns:
-        The frame containing the text if found, otherwise None.
+        A tuple containing:
+        - The frame containing the text if found
+        - The frame count where it was found
+        If no slide is found, returns None.
     """
     cap: cv2.VideoCapture = cv2.VideoCapture(video_path)
 
@@ -169,8 +174,9 @@ def find_first_slide(video_path: str, max_seconds: int = 30) -> np.ndarray | Non
     max_attempts: int = int(max_seconds * fps)  # Calculate max frames to check
 
     result: np.ndarray | None = None
+    frame_count: int = 0
 
-    for _ in range(max_attempts):
+    for frame_count in range(max_attempts):
         ret: bool
         frame: np.ndarray
         ret, frame = cap.read()
@@ -184,7 +190,7 @@ def find_first_slide(video_path: str, max_seconds: int = 30) -> np.ndarray | Non
 
     cap.release()
 
-    return result
+    return result, frame_count
 
 
 def add_black_border(image, padding_size=50):
@@ -362,10 +368,23 @@ def detect_slide_transitions(video_file_path: str) -> None:
         None (prints detected slide change timestamps to the console).
     """
 
-    first_slide_frame: np.ndarray | None = find_first_slide(video_file_path)
+    first_slide_result: tuple[np.ndarray, int] | None = find_first_slide(
+        video_file_path
+    )
+    if first_slide_result is None:
+        print("Error: No slide was found in the video.")
+        return
+
+    first_slide_frame: np.ndarray = first_slide_result[0]
+    first_slide_start_frame_index: int = first_slide_result[1]
+
     roi_values: list[int] | None = extract_slide_roi_coordinates_from_image(
         first_slide_frame
     )
+
+    if roi_values is None:
+        print("Error: Unable to extract ROI coordinates from the first slide.")
+        return
 
     top_left_x: int
     top_left_y: int
@@ -380,11 +399,12 @@ def detect_slide_transitions(video_file_path: str) -> None:
         return
 
     fps: float = video_capture.get(cv2.CAP_PROP_FPS)
-    current_frame_index: int = 0
+    current_frame_index: float = first_slide_start_frame_index
     previous_video_frame: np.ndarray | None = None
 
     print("Starting video analysis")
     while video_capture.isOpened():
+
         video_capture.set(cv2.CAP_PROP_POS_FRAMES, current_frame_index)
 
         frame_read_successful: bool
@@ -398,9 +418,9 @@ def detect_slide_transitions(video_file_path: str) -> None:
             # Show video
             cv2.imshow("ROI Video", current_video_frame_with_adjusted_roi)
 
-        # quit with 'q'
-        if cv2.waitKey(25) & 0xFF == ord("q"):
-            break
+            # quit with 'q'
+            if cv2.waitKey(25) & 0xFF == ord("q"):
+                break
 
         if not frame_read_successful:
             break
@@ -408,27 +428,25 @@ def detect_slide_transitions(video_file_path: str) -> None:
         # For the first frame of the video
         if previous_video_frame is None:
             previous_video_frame = current_video_frame
+            current_frame_index += int(fps)
+            continue
 
-        if previous_video_frame is not None:
-            similarity_value: float = compute_image_similarity(
-                previous_video_frame, current_video_frame
-            )
+        similarity_value: float = compute_image_similarity(
+            previous_video_frame, current_video_frame
+        )
 
-            if similarity_value < STRUCTURAL_SIMILARITY_THRESHOLD:
-                timestamp_seconds: float = (
-                    video_capture.get(cv2.CAP_PROP_POS_MSEC) / 1000
-                )
-                minutes: int = int(timestamp_seconds // 60)
-                seconds: int = int(timestamp_seconds % 60)
-                print(f"Slide changed at {minutes:02d}:{seconds:02d}")
+        if similarity_value < STRUCTURAL_SIMILARITY_THRESHOLD:
+            timestamp_seconds: float = video_capture.get(cv2.CAP_PROP_POS_MSEC) / 1000
+            minutes: int = int(timestamp_seconds // 60)
+            seconds: int = int(timestamp_seconds % 60)
+            print(f"Slide changed at {minutes:02d}:{seconds:02d}")
 
         previous_video_frame = current_video_frame
 
         current_frame_index += fps
-
     video_capture.release()
 
 
 if __name__ == "__main__":
-    detect_slide_transitions("tests/test_data/videos/dbwt1/dbwt1_01.mp4")
+    detect_slide_transitions("tests/test_data/videos/dbwt1/dbwt1_02.mp4")
     # print("Hi")
