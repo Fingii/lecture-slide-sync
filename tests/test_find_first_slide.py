@@ -111,9 +111,7 @@ def get_test_cases_with_slide_prefix(
             if video_key not in frame_counts:
                 continue
 
-            frame_count: int = frame_counts.get(
-                video_key, -1
-            )  # Default to -1 if missing
+            frame_count: int = frame_counts.get(video_key, -1)  # Default to -1 if missing
 
             if frame_count == -1:
                 continue
@@ -151,23 +149,15 @@ def test_finds_correct_first_slide_same_image_dimensions(
 
     detected_first_slide, detected_first_slide_frame_count = result
 
-    expected_frame: np.ndarray | None = cv2.imread(
-        str(expected_slide_path), cv2.IMREAD_UNCHANGED
-    )
+    expected_frame: np.ndarray | None = cv2.imread(str(expected_slide_path), cv2.IMREAD_UNCHANGED)
 
-    assert (
-        expected_frame is not None
-    ), f"Could not read expected frame: {expected_slide_path}"
-    assert (
-        detected_first_slide.shape == expected_frame.shape
-    ), "Image dimensions mismatch"
+    assert expected_frame is not None, f"Could not read expected frame: {expected_slide_path}"
+    assert detected_first_slide.shape == expected_frame.shape, "Image dimensions mismatch"
 
     # Compute absolute difference
     difference: np.ndarray = cv2.absdiff(detected_first_slide, expected_frame)
 
-    assert (
-        np.sum(difference) == 0
-    ), f"The images are not exactly the same, difference != 0: {difference:.2f}"
+    assert np.sum(difference) == 0, f"The images are not exactly the same, difference != 0: {difference:.2f}"
 
     assert (
         detected_first_slide_frame_count == expected_frame_count
@@ -178,9 +168,7 @@ def test_finds_correct_first_slide_same_image_dimensions(
     "video_path, not_first_slide_path",
     get_test_cases_with_slide_prefix("not_first_slide", include_frame_count=False),
 )
-def test_rejects_non_first_slide_same_image_dimensions(
-    video_path: Path, not_first_slide_path: Path
-) -> None:
+def test_rejects_non_first_slide_same_image_dimensions(video_path: Path, not_first_slide_path: Path) -> None:
     """
     Ensures that NON first-slides are correctly rejected by verifying that the detected frame
     is NOT identical to the given manually captured first-slide, which was saved using cv2.imwrite
@@ -200,20 +188,12 @@ def test_rejects_non_first_slide_same_image_dimensions(
     detected_first_slide: np.ndarray
     detected_first_slide, _ = result
 
-    non_first_slide: np.ndarray = cv2.imread(
-        str(not_first_slide_path), cv2.IMREAD_UNCHANGED
-    )
+    non_first_slide: np.ndarray = cv2.imread(str(not_first_slide_path), cv2.IMREAD_UNCHANGED)
 
-    assert (
-        detected_first_slide.shape == non_first_slide.shape
-    ), "Image dimensions mismatch"
+    assert detected_first_slide.shape == non_first_slide.shape, "Image dimensions mismatch"
 
-    assert (
-        non_first_slide is not None
-    ), f"Failed to load expected frame: {not_first_slide_path}"
+    assert non_first_slide is not None, f"Failed to load expected frame: {not_first_slide_path}"
 
     # Compute absolute difference
     difference: np.ndarray = cv2.absdiff(detected_first_slide, non_first_slide)
-    assert (
-        np.sum(difference) != 0
-    ), "Detected slide incorrectly matches a non-first slide"
+    assert np.sum(difference) != 0, "Detected slide incorrectly matches a non-first slide"

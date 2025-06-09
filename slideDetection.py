@@ -12,9 +12,7 @@ DEBUG_MODE = False
 STRUCTURAL_SIMILARITY_THRESHOLD = 0.85
 
 
-def show_image_resized(
-    image: np.ndarray, window_name: str = "default", scale_factor: float = 0.8
-) -> None:
+def show_image_resized(image: np.ndarray, window_name: str = "default", scale_factor: float = 0.8) -> None:
     """
     DEBUG ONLY: DON'T USE IN PRODUCTIVE CODE.
     Displays an image in an OpenCV window, resizes it to fit the screen while keeping the title visible.
@@ -39,9 +37,7 @@ def show_image_resized(
     new_width: int = max(1, int(image_width * scale_factor))
     new_height: int = max(1, int(image_height * scale_factor))
 
-    resized_image: np.ndarray = cv2.resize(
-        image, (new_width, new_height)
-    )  # Resize image
+    resized_image: np.ndarray = cv2.resize(image, (new_width, new_height))  # Resize image
 
     # Create and resize window
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
@@ -108,9 +104,7 @@ def check_all_keywords_in_image(
         # Check if detected text matches any expected keywords
         for keyword in keywords_to_be_matched:
             # Has to be a standalone word and case-insensitive
-            if keyword not in found_keywords and re.search(
-                rf"\b{keyword}\b", text, re.IGNORECASE
-            ):
+            if keyword not in found_keywords and re.search(rf"\b{keyword}\b", text, re.IGNORECASE):
                 found_keywords.add(keyword)
 
                 if DEBUG_MODE:
@@ -151,9 +145,7 @@ def check_all_keywords_in_image(
     return True
 
 
-def find_first_slide(
-    video_path: str, max_seconds: int = 30
-) -> tuple[np.ndarray, int] | None:
+def find_first_slide(video_path: str, max_seconds: int = 30) -> tuple[np.ndarray, int] | None:
     """
     Searches the video for a slide containing specific keywords by checking frames
     until either the slide is found or the maximum duration is reached.
@@ -236,9 +228,7 @@ def extract_slide_roi_coordinates_from_image(
 
     # Using cv2.RETR_EXTERNAL to detect only the outer contours,
     # inner contours are not relevant for finding the biggest rectangle (the slide).
-    contours_sequence, _ = cv2.findContours(
-        canny_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-    )
+    contours_sequence, _ = cv2.findContours(canny_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours: tuple[np.ndarray, ...] = tuple(contours_sequence)
 
     if not contours:
@@ -260,12 +250,8 @@ def extract_slide_roi_coordinates_from_image(
         largest_contour_height,
     ) = cv2.boundingRect(largest_contour)
 
-    largest_contour_bottom_right_x: int = (
-        largest_contour_top_left_x + largest_contour_width
-    )
-    largest_contour_bottom_right_y: int = (
-        largest_contour_top_left_y + largest_contour_height
-    )
+    largest_contour_bottom_right_x: int = largest_contour_top_left_x + largest_contour_width
+    largest_contour_bottom_right_y: int = largest_contour_top_left_y + largest_contour_height
 
     if DEBUG_MODE:
         visualization_image: np.ndarray = padded_image.copy()
@@ -277,9 +263,7 @@ def extract_slide_roi_coordinates_from_image(
         ]
 
         for cnt in contours:
-            top_left_x_debug, top_left_y_debug, width_debug, height_debug = (
-                cv2.boundingRect(cnt)
-            )
+            top_left_x_debug, top_left_y_debug, width_debug, height_debug = cv2.boundingRect(cnt)
             cv2.rectangle(
                 visualization_image,
                 (top_left_x_debug, top_left_y_debug),
@@ -364,9 +348,7 @@ def detect_slide_transitions(video_file_path: str) -> None:
         None (prints detected slide change timestamps to the console).
     """
 
-    first_slide_result: tuple[np.ndarray, int] | None = find_first_slide(
-        video_file_path
-    )
+    first_slide_result: tuple[np.ndarray, int] | None = find_first_slide(video_file_path)
     if first_slide_result is None:
         print("Error: No slide was found in the video.")
         return
@@ -374,9 +356,7 @@ def detect_slide_transitions(video_file_path: str) -> None:
     first_slide_frame: np.ndarray = first_slide_result[0]
     first_slide_start_frame_index: int = first_slide_result[1]
 
-    roi_values: list[int] | None = extract_slide_roi_coordinates_from_image(
-        first_slide_frame
-    )
+    roi_values: list[int] | None = extract_slide_roi_coordinates_from_image(first_slide_frame)
 
     if roi_values is None:
         print("Error: Unable to extract ROI coordinates from the first slide.")
@@ -427,9 +407,7 @@ def detect_slide_transitions(video_file_path: str) -> None:
             current_frame_index += int(fps)
             continue
 
-        similarity_value: float = compute_image_similarity(
-            previous_video_frame, current_video_frame
-        )
+        similarity_value: float = compute_image_similarity(previous_video_frame, current_video_frame)
 
         if similarity_value < STRUCTURAL_SIMILARITY_THRESHOLD:
             timestamp_seconds: float = video_capture.get(cv2.CAP_PROP_POS_MSEC) / 1000
