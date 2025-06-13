@@ -1,14 +1,13 @@
 import cv2
 import numpy as np
-import pyautogui
 from PIL import Image
 from skimage.metrics import structural_similarity as ssim
-import pytesseract  # type: ignore
-import re
-from typing import Union
+
 import pymupdf  # type: ignore
 
-DEBUG_MODE = False
+from ocr_keyword_detector import are_all_keywords_present  # type: ignore
+from debug_utils import show_image_resized
+from config import DEBUG_MODE
 
 # Threshold for detecting slide changes
 STRUCTURAL_SIMILARITY_THRESHOLD = 0.85
@@ -41,139 +40,6 @@ def convert_pdf_slides_to_images(pdf_path: str) -> list[np.ndarray]:
     return pdf_slide_images_cv2
 
 
-def show_image_resized(image: np.ndarray, window_name: str = "default", scale_factor: float = 0.8) -> None:
-    """
-    DEBUG ONLY: DON'T USE IN PRODUCTIVE CODE.
-    Displays an image in an OpenCV window, resizes it to fit the screen while keeping the title visible.
-
-    Args:
-        image: Image to be displayed.
-        window_name: Name of the OpenCV window.
-        scale_factor: Scaling factor to reduce the image size (default: 0.9 for 90% of the screen).
-    Returns:
-        None, displays the given image centered and resized
-    """
-    screen_height: int = pyautogui.size().height
-    screen_width: int = pyautogui.size().width
-    image_height: int = image.shape[0]
-    image_width: int = image.shape[1]
-
-    scale_factor = min(
-        (screen_width * scale_factor) / image_width,
-        (screen_height * scale_factor) / image_height,
-    )  # Calculate optimal scale factor to fit screen
-
-    new_width: int = max(1, int(image_width * scale_factor))
-    new_height: int = max(1, int(image_height * scale_factor))
-
-    resized_image: np.ndarray = cv2.resize(image, (new_width, new_height))  # Resize image
-
-    # Create and resize window
-    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(window_name, new_width, new_height)
-
-    # Center window on screen
-    x_pos: int = (screen_width - new_width) // 2
-    y_pos: int = (screen_height - new_height) // 2
-    cv2.moveWindow(window_name, x_pos, y_pos)
-
-    # Display image
-    cv2.imshow(window_name, resized_image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
-def check_all_keywords_in_image(
-    frame: np.ndarray,
-    keywords_to_be_matched: set[str] | None = None,
-    confidence_threshold: int = 80,
-) -> bool:
-    """
-    Checks whether all specified keywords appear in the image using OCR.
-
-    Args:
-        frame: OpenCV image (BGR).
-        keywords_to_be_matched: Set of expected words (case-insensitive). Set is used because the order doesn't matter. If None, uses default keywords.
-        confidence_threshold: Minimum OCR confidence level (0-100).
-
-    Returns:
-        True if all keywords are found, False otherwise.
-    """
-    if keywords_to_be_matched is None:
-        keywords_to_be_matched = {
-            "UNIVERSITY",
-            "FH",
-            "AACHEN",
-            "OF",
-            "APPLIED",
-            "SCIENCES",
-        }
-
-    # Convert image for OCR processing
-    frame_RGB: np.ndarray = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-    data: dict[str, list[Union[str, int]]] = pytesseract.image_to_data(
-        frame_RGB,
-        output_type=pytesseract.Output.DICT,
-        config="--psm 11 --oem 3",  # psm11 because we don't care about the order of the text
-    )
-
-    if DEBUG_MODE:
-        bounding_boxes: dict[str, tuple[int, int, int, int]] = {}  # for visualization
-
-    found_keywords: set[str] = set()
-
-    for i in range(len(data["text"])):
-        text: str = str(data["text"][i]).strip()
-        conf: int = int(data["conf"][i])
-
-        if conf < confidence_threshold:
-            continue
-
-        # Check if detected text matches any expected keywords
-        for keyword in keywords_to_be_matched:
-            # Has to be a standalone word and case-insensitive
-            if keyword not in found_keywords and re.search(rf"\b{keyword}\b", text, re.IGNORECASE):
-                found_keywords.add(keyword)
-
-                if DEBUG_MODE:
-                    textbox_leftmost_x_position: int = int(data["left"][i])
-                    textbox_topmost_y_position: int = int(data["top"][i])
-                    text_box_width: int = int(data["width"][i])
-                    text_box_height: int = int(data["height"][i])
-
-                    # Extracting position of textbox (x1, y1, x2, y2)
-                    bounding_boxes[keyword] = (
-                        textbox_leftmost_x_position,
-                        textbox_topmost_y_position,
-                        textbox_leftmost_x_position + text_box_width,
-                        textbox_topmost_y_position + text_box_height,
-                    )
-
-    # Early exit if not all keywords were found
-    if not keywords_to_be_matched.issubset(found_keywords):
-        return False
-
-    if DEBUG_MODE:
-        for keyword in found_keywords:
-            if keyword in bounding_boxes:
-                x1, y1, x2, y2 = bounding_boxes[keyword]
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green box
-                cv2.putText(
-                    frame,
-                    keyword,
-                    (x1, y1 - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0, 255, 0),
-                    2,
-                )
-
-        show_image_resized(frame)
-
-    return True
-
-
 def find_first_slide(video_path: str, max_seconds: int = 30) -> tuple[np.ndarray, int] | None:
     """
     Searches the video for a slide containing specific keywords by checking frames
@@ -191,18 +57,19 @@ def find_first_slide(video_path: str, max_seconds: int = 30) -> tuple[np.ndarray
     """
     cap: cv2.VideoCapture = cv2.VideoCapture(video_path)
 
-    fps: float = float(cap.get(cv2.CAP_PROP_FPS))  # Frames per second (FPS) from video
-    max_attempts: int = int(max_seconds * fps)  # Calculate max frames to check
+    fps: float = float(cap.get(cv2.CAP_PROP_FPS))
+    max_attempts: int = int(max_seconds * fps)
+    keywords_to_be_matched: set[str] = {"UNIVERSITY", "FH", "AACHEN", "OF", "APPLIED", "SCIENCES"}
 
     for frame_count in range(max_attempts):
-        ret: bool
+        success: bool
         frame: np.ndarray
-        ret, frame = cap.read()
+        success, frame = cap.read()
 
-        if not ret:
+        if not success:
             break
 
-        if check_all_keywords_in_image(frame):
+        if are_all_keywords_present(frame, keywords_to_be_matched):
             cap.release()
             return frame, frame_count
 
@@ -234,7 +101,7 @@ def add_black_border(image, padding_size=50):
 
 def extract_slide_roi_coordinates_from_image(
     image: np.ndarray, min_width: int = 500, min_height: int = 500, min_area: int = 5000
-) -> list[int] | None:
+) -> tuple[int, int, int, int] | None:
     """
     Loads an image, preprocesses it (grayscale, edge detection, contour extraction),
     and finds the largest rectangular Region of Interest (RoI) which represents the entire slide.
@@ -323,12 +190,12 @@ def extract_slide_roi_coordinates_from_image(
         image_height = image.shape[0]
 
         # Adjust RoI coordinates by removing padding
-        return [
+        return (
             max(0, largest_contour_top_left_x - padding),
             max(0, largest_contour_top_left_y - padding),
             min(image_width, largest_contour_bottom_right_x - padding),
             min(image_height, largest_contour_bottom_right_y - padding),
-        ]
+        )
     else:
         print("Detected RoI is too small to be valid.")
         return None
@@ -383,73 +250,69 @@ def detect_slide_transitions(video_file_path: str) -> None:
         return
 
     first_slide_frame: np.ndarray = first_slide_result[0]
-    first_slide_start_frame_index: int = first_slide_result[1]
+    first_slide_frame_index: int = first_slide_result[1]
 
-    roi_values: list[int] | None = extract_slide_roi_coordinates_from_image(first_slide_frame)
-
-    if roi_values is None:
+    roi_coordinates: tuple[int, int, int, int] | None = extract_slide_roi_coordinates_from_image(
+        first_slide_frame
+    )
+    if roi_coordinates is None:
         print("Error: Unable to extract ROI coordinates from the first slide.")
         return
 
-    top_left_x: int
-    top_left_y: int
-    bottom_right_x: int
-    bottom_right_y: int
+    roi_top_left_x, roi_top_left_y, roi_bottom_right_x, roi_bottom_right_y = roi_coordinates
 
-    top_left_x, top_left_y, bottom_right_x, bottom_right_y = roi_values
-
-    video_capture: cv2.VideoCapture = cv2.VideoCapture(video_file_path)
-    if not video_capture.isOpened():
+    cap: cv2.VideoCapture = cv2.VideoCapture(video_file_path)
+    if not cap.isOpened():
         print("Error: Unable to open the video file.")
         return
 
-    fps: float = video_capture.get(cv2.CAP_PROP_FPS)
-    current_frame_index: float = first_slide_start_frame_index
+    fps: float = cap.get(cv2.CAP_PROP_FPS)
+    frame_index: float = first_slide_frame_index
     previous_video_frame: np.ndarray | None = None
 
     print("Starting video analysis")
-    while video_capture.isOpened():
+    while cap.isOpened():
 
-        video_capture.set(cv2.CAP_PROP_POS_FRAMES, current_frame_index)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
 
-        frame_read_successful: bool
-        current_video_frame: np.ndarray
-        frame_read_successful, current_video_frame = video_capture.read()
-        current_video_frame_with_adjusted_roi: np.ndarray = current_video_frame[
-            top_left_y:bottom_right_y, top_left_x:bottom_right_x
+        success: bool
+        frame: np.ndarray
+        success, frame = cap.read()
+
+        if not success:
+            break
+
+        frame_adjusted_roi: np.ndarray = frame[
+            roi_top_left_y:roi_bottom_right_y, roi_top_left_x:roi_bottom_right_x
         ]
 
         if DEBUG_MODE:
             # Show video
-            cv2.imshow("ROI Video", current_video_frame_with_adjusted_roi)
+            cv2.imshow("ROI Video", frame_adjusted_roi)
 
             # quit with 'q'
             if cv2.waitKey(25) & 0xFF == ord("q"):
                 break
 
-        if not frame_read_successful:
-            break
-
         # For the first frame of the video
         if previous_video_frame is None:
-            previous_video_frame = current_video_frame
-            current_frame_index += int(fps)
+            previous_video_frame = frame
+            frame_index += int(fps)
             continue
 
-        similarity_value: float = compute_image_similarity(previous_video_frame, current_video_frame)
+        similarity_value: float = compute_image_similarity(previous_video_frame, frame)
 
         if similarity_value < STRUCTURAL_SIMILARITY_THRESHOLD:
-            timestamp_seconds: float = video_capture.get(cv2.CAP_PROP_POS_MSEC) / 1000
+            timestamp_seconds: float = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
             minutes: int = int(timestamp_seconds // 60)
             seconds: int = int(timestamp_seconds % 60)
             print(f"Slide changed at {minutes:02d}:{seconds:02d}")
 
-        previous_video_frame = current_video_frame
+        previous_video_frame = frame
 
-        current_frame_index += fps
-    video_capture.release()
+        frame_index += fps
+    cap.release()
 
 
 if __name__ == "__main__":
     detect_slide_transitions("tests/test_data/videos/dbwt1/dbwt1_02.mp4")
-    # print("Hi")

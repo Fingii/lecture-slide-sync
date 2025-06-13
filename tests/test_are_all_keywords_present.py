@@ -1,7 +1,9 @@
 import cv2
 from pathlib import Path
 import numpy as np
-from slideDetection import check_all_keywords_in_image
+from ocr_keyword_detector import are_all_keywords_present
+
+keywords_to_be_matched: set[str] = {"UNIVERSITY", "FH", "AACHEN", "OF", "APPLIED", "SCIENCES"}
 
 
 def pytest_generate_tests(metafunc) -> None:
@@ -21,9 +23,11 @@ class TestKeywordDetection:
     def test_valid_images(self, valid_image) -> None:
         img: np.ndarray = cv2.imread(str(valid_image))
         assert img is not None, f"Could not load image {valid_image}"
-        assert check_all_keywords_in_image(img) is True, f"Failed on {valid_image.name}"
+        assert are_all_keywords_present(img, keywords_to_be_matched) is True, f"Failed on {valid_image.name}"
 
     def test_partial_images(self, partial_image) -> None:
         img: np.ndarray = cv2.imread(str(partial_image))
         assert img is not None, f"Could not load image {partial_image}"
-        assert check_all_keywords_in_image(img) is False, f"Failed on {partial_image.name}"
+        assert (
+            are_all_keywords_present(img, keywords_to_be_matched) is False
+        ), f"Failed on {partial_image.name}"
