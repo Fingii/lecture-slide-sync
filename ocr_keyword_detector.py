@@ -7,7 +7,7 @@ from config import DEBUG_MODE
 from debug_utils import show_image_resized
 
 
-def visualize_keyword_matches(
+def _visualize_keyword_matches(
     frame: np.ndarray, ocr_data: dict[str, list[str | int]], found_keywords: set[str]
 ) -> None:
     """
@@ -70,7 +70,7 @@ def visualize_keyword_matches(
     show_image_resized(frame_copy)
 
 
-def get_matching_keywords(words: set[str], keywords_to_match: set[str]) -> set[str]:
+def _get_matching_keywords(words: set[str], keywords_to_match: set[str]) -> set[str]:
     """
     Identifies keywords that are present in a given set of words using case-insensitive matching with word boundaries.
 
@@ -96,7 +96,7 @@ def get_matching_keywords(words: set[str], keywords_to_match: set[str]) -> set[s
     return found_keywords
 
 
-def perform_ocr(frame: np.ndarray) -> dict[str, list[str | int]]:
+def _perform_ocr(frame: np.ndarray) -> dict[str, list[str | int]]:
     """
     Extracts text from an image using Optical Character Recognition (OCR).
 
@@ -122,20 +122,7 @@ def perform_ocr(frame: np.ndarray) -> dict[str, list[str | int]]:
     )
 
 
-def remove_empty_strings(words: set[str]) -> set[str]:
-    """
-    Removes empty or whitespace-only strings from a set of words.
-
-    Args:
-        words: A set of words.
-
-    Returns:
-        A set of words with empty and whitespace-only strings removed.
-    """
-    return {word.strip() for word in words if word.strip()}
-
-
-def filter_words_by_confidence(ocr_data: dict[str, list[str | int]], confidence_threshold: int) -> set[str]:
+def _filter_words_by_confidence(ocr_data: dict[str, list[str | int]], confidence_threshold: int) -> set[str]:
     """
     Filters words from OCR data based on a confidence threshold.
 
@@ -176,12 +163,12 @@ def are_all_keywords_present(
     """
 
     frame_rgb: np.ndarray = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    ocr_data: dict[str, list[str | int]] = perform_ocr(frame_rgb)
-    valid_words: set[str] = filter_words_by_confidence(ocr_data, confidence_threshold)
-    valid_words_non_empty = remove_empty_strings(valid_words)
-    found_keywords: set[str] = get_matching_keywords(valid_words_non_empty, keywords)
+    ocr_data: dict[str, list[str | int]] = _perform_ocr(frame_rgb)
+    valid_words: set[str] = _filter_words_by_confidence(ocr_data, confidence_threshold)
+    valid_words_non_empty = {word.strip() for word in valid_words if word.strip()}
+    found_keywords: set[str] = _get_matching_keywords(valid_words_non_empty, keywords)
 
     if DEBUG_MODE and keywords.issubset(found_keywords):
-        visualize_keyword_matches(frame, ocr_data, found_keywords)
+        _visualize_keyword_matches(frame, ocr_data, found_keywords)
 
     return keywords.issubset(found_keywords)
