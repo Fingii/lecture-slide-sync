@@ -1,16 +1,12 @@
 import cv2
 import numpy as np
 from PIL import Image
-from skimage.metrics import structural_similarity as ssim
 
 import pymupdf  # type: ignore
 
 from ocr_keyword_detector import are_all_keywords_present  # type: ignore
 from debug_utils import show_image_resized
 from config import DEBUG_MODE
-
-# Threshold for detecting slide changes
-STRUCTURAL_SIMILARITY_THRESHOLD = 0.85
 
 
 def convert_pdf_slides_to_images(pdf_path: str) -> list[np.ndarray]:
@@ -201,35 +197,6 @@ def extract_slide_roi_coordinates_from_image(
         return None
 
 
-def compute_image_similarity(
-    image1: np.ndarray,
-    image2: np.ndarray,
-) -> float:
-    """
-    Computes the Structural Similarity Index (SSIM) between two images.
-
-    The function resizes both images, converts them to grayscale, and calculates SSIM
-    to determine the similarity between them.
-
-    Args:
-        image1: First image.
-        image2: Second image.
-
-    Returns:
-        Similarity score (range: -1 to 1), where 1 means identical images.
-
-    """
-    # Convert images to grayscale for similarity calculation
-    grayscale_image1: np.ndarray = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
-    grayscale_image2: np.ndarray = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
-
-    # Compute the structural similarity index (SSIM)
-    similarity_score: float
-    similarity_score, _ = ssim(grayscale_image1, grayscale_image2, full=True)
-
-    return similarity_score
-
-
 def detect_slide_transitions(video_file_path: str) -> None:
     """
     Analyzes a video file to detect slide transitions based on structural similarity.
@@ -267,50 +234,32 @@ def detect_slide_transitions(video_file_path: str) -> None:
         return
 
     fps: float = cap.get(cv2.CAP_PROP_FPS)
-    frame_index: float = first_slide_frame_index
-    previous_video_frame: np.ndarray | None = None
+    current_frame_index: float = first_slide_frame_index
 
     print("Starting video analysis")
     while cap.isOpened():
 
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-
+        cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame_index)
         success: bool
-        frame: np.ndarray
-        success, frame = cap.read()
+        video_frame: np.ndarray
+        success, video_frame = cap.read()
 
         if not success:
             break
 
-        frame_adjusted_roi: np.ndarray = frame[
+        video_frame_adjusted_roi: np.ndarray = video_frame[
             roi_top_left_y:roi_bottom_right_y, roi_top_left_x:roi_bottom_right_x
         ]
 
         if DEBUG_MODE:
             # Show video
-            cv2.imshow("ROI Video", frame_adjusted_roi)
+            cv2.imshow("ROI Video", video_frame_adjusted_roi)
 
             # quit with 'q'
             if cv2.waitKey(25) & 0xFF == ord("q"):
                 break
 
-        # For the first frame of the video
-        if previous_video_frame is None:
-            previous_video_frame = frame
-            frame_index += int(fps)
-            continue
-
-        similarity_value: float = compute_image_similarity(previous_video_frame, frame)
-
-        if similarity_value < STRUCTURAL_SIMILARITY_THRESHOLD:
-            timestamp_seconds: float = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
-            minutes: int = int(timestamp_seconds // 60)
-            seconds: int = int(timestamp_seconds % 60)
-            print(f"Slide changed at {minutes:02d}:{seconds:02d}")
-
-        previous_video_frame = frame
-
-        frame_index += fps
+        current_frame_index += fps
     cap.release()
 
 
