@@ -1,9 +1,10 @@
 import cv2
 import numpy as np
 
-from config import DEBUG_MODE
+from image_utils import apply_roi_crop
 from ocr_keyword_detector import are_all_keywords_present
 from roi_utils import extract_slide_roi_coordinates
+from video_utils import open_video_capture, generate_indexed_video_frames
 
 
 def detect_first_slide(video_path: str, max_seconds: int = 30) -> tuple[np.ndarray, int] | None:
@@ -70,38 +71,10 @@ def detect_slide_transitions(video_file_path: str) -> None:
         print("Error: Unable to extract ROI coordinates from the first slide.")
         return
 
-    roi_top_left_x, roi_top_left_y, roi_bottom_right_x, roi_bottom_right_y = roi_coordinates
-
-    cap: cv2.VideoCapture = cv2.VideoCapture(video_file_path)
-    if not cap.isOpened():
-        print("Error: Unable to open the video file.")
-        return
-
-    fps: float = cap.get(cv2.CAP_PROP_FPS)
-    current_frame_index: float = first_slide_frame_index
+    cap: cv2.VideoCapture = open_video_capture(video_file_path)
 
     print("Starting video analysis")
-    while cap.isOpened():
+    for _, video_frame in generate_indexed_video_frames(cap, start_index=first_slide_frame_index):
+        video_frame_roi = apply_roi_crop(video_frame, roi_coordinates)
 
-        cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame_index)
-        success: bool
-        video_frame: np.ndarray
-        success, video_frame = cap.read()
-
-        if not success:
-            break
-
-        video_frame_adjusted_roi: np.ndarray = video_frame[
-            roi_top_left_y:roi_bottom_right_y, roi_top_left_x:roi_bottom_right_x
-        ]
-
-        if DEBUG_MODE:
-            # Show video
-            cv2.imshow("ROI Video", video_frame_adjusted_roi)
-
-            # quit with 'q'
-            if cv2.waitKey(25) & 0xFF == ord("q"):
-                break
-
-        current_frame_index += fps
     cap.release()
