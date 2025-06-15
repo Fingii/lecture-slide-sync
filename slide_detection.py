@@ -7,13 +7,13 @@ from roi_utils import extract_slide_roi_coordinates
 from video_utils import open_video_capture, generate_indexed_video_frames
 
 
-def detect_first_slide(video_path: str, max_seconds: int = 30) -> tuple[np.ndarray, int] | None:
+def detect_first_slide(video_file_path: str, max_seconds: int = 30) -> tuple[np.ndarray, int] | None:
     """
     Searches the video for a slide containing specific keywords by checking frames
     until either the slide is found or the maximum duration is reached.
 
     Args:
-        video_path: Path to the video file.
+        video_file_path: Path to the video file.
         max_seconds: Maximum duration (in seconds) to scan the video for a slide.
 
     Returns:
@@ -22,23 +22,18 @@ def detect_first_slide(video_path: str, max_seconds: int = 30) -> tuple[np.ndarr
         - The frame count where it was found
         If no slide is found, returns None.
     """
-    cap: cv2.VideoCapture = cv2.VideoCapture(video_path)
+    cap: cv2.VideoCapture = open_video_capture(video_file_path)
 
     fps: float = float(cap.get(cv2.CAP_PROP_FPS))
     max_attempts: int = int(max_seconds * fps)
     keywords_to_be_matched: set[str] = {"UNIVERSITY", "FH", "AACHEN", "OF", "APPLIED", "SCIENCES"}
 
-    for frame_count in range(max_attempts):
-        success: bool
-        frame: np.ndarray
-        success, frame = cap.read()
-
-        if not success:
+    for frame_index, frame in generate_indexed_video_frames(cap, frames_step=1):
+        if frame_index >= max_attempts:
             break
-
         if are_all_keywords_present(frame, keywords_to_be_matched):
             cap.release()
-            return frame, frame_count
+            return frame, frame_index
 
     cap.release()
     return None
