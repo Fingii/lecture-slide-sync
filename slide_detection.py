@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 
 from image_utils import apply_roi_crop
+from video_utils import open_video_capture, generate_video_frames_with_number
 from ocr_keyword_detector import are_all_keywords_present
 from roi_utils import extract_slide_roi_coordinates
 from video_utils import open_video_capture, generate_indexed_video_frames
@@ -28,12 +29,12 @@ def detect_first_slide(video_file_path: str, max_seconds: int = 30) -> tuple[np.
     max_attempts: int = int(max_seconds * fps)
     keywords_to_be_matched: set[str] = {"UNIVERSITY", "FH", "AACHEN", "OF", "APPLIED", "SCIENCES"}
 
-    for frame_index, frame in generate_indexed_video_frames(cap, frames_step=1):
-        if frame_index >= max_attempts:
+    for frame, frame_number in generate_video_frames_with_number(cap, frames_step=1):
+        if frame_number >= max_attempts:
             break
         if are_all_keywords_present(frame, keywords_to_be_matched):
             cap.release()
-            return frame, frame_index
+            return frame, frame_number
 
     cap.release()
     return None
@@ -59,17 +60,18 @@ def detect_slide_transitions(video_file_path: str) -> None:
         return
 
     first_slide_frame: np.ndarray = first_slide_result[0]
-    first_slide_frame_index: int = first_slide_result[1]
+    first_slide_frame_number: int = first_slide_result[1]
 
     roi_coordinates: tuple[int, int, int, int] | None = extract_slide_roi_coordinates(first_slide_frame)
     if roi_coordinates is None:
         print("Error: Unable to extract ROI coordinates from the first slide.")
         return
 
+    current_pdf_slide_page = 0
     cap: cv2.VideoCapture = open_video_capture(video_file_path)
 
     print("Starting video analysis")
-    for _, video_frame in generate_indexed_video_frames(cap, start_index=first_slide_frame_index):
+    for video_frame, _ in generate_video_frames_with_number(cap, start_frame_number=first_slide_frame_number):
         video_frame_roi = apply_roi_crop(video_frame, roi_coordinates)
 
     cap.release()

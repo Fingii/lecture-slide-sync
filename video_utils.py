@@ -4,30 +4,33 @@ import cv2
 import numpy as np
 
 
-def generate_indexed_video_frames(
-    video_capture: cv2.VideoCapture, frames_step: int = 1, start_index: int = 0
-) -> Generator[tuple[int, np.ndarray], None, None]:
+def generate_video_frames_with_number(
+    video_capture: cv2.VideoCapture, frames_step: int = 1, start_frame_number: int = 0
+) -> Generator[tuple[np.ndarray, int], None, None]:
     """
-    Generator that yields frames from a video with customizable starting point and skipping.
+    Generates video frames along with their frame numbers, starting from a given frame
+    and optionally skipping frames at a fixed interval.
 
     Args:
         video_capture: An open cv2.VideoCapture object.
-        frames_step: Number of frames to skip between reads.
-        start_index: Frame index to start reading from.
+        frames_step: Number of frames to skip between each yield.
+        start_frame_number: The initial frame number to begin reading from.
 
     Yields:
-        A tuple (frame_index, frame) for each read frame.
+        A tuple containing:
+        - frame: The actual video frame as a NumPy array.
+        - frame_number: The number where the frame appeared in the video.
     """
-    frame_index = start_index
+    video_frame_number = start_frame_number
 
     while video_capture.isOpened():
-        video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-        success, frame = video_capture.read()
+        video_capture.set(cv2.CAP_PROP_POS_FRAMES, video_frame_number)
+        success, video_frame = video_capture.read()
         if not success:
             break
 
-        yield frame_index, frame
-        frame_index += frames_step
+        yield video_frame, video_frame_number
+        video_frame_number += frames_step
 
 
 def open_video_capture(video_path: str) -> cv2.VideoCapture:
@@ -37,22 +40,22 @@ def open_video_capture(video_path: str) -> cv2.VideoCapture:
     return cap
 
 
-def read_frame_at_index(video_path: str, frame_index: int) -> np.ndarray:
+def read_video_frame(video_path: str, frame_number: int) -> np.ndarray:
     """
     Returns the frame at the given index from a video without changing the state of any external capture object.
 
     Args:
         video_path: Path to the video file.
-        frame_index: Index of the desired frame.
+        frame_number: Index of the desired frame.
 
     Returns:
         The requested frame as a NumPy array, or None if reading fails.
     """
     video_capture: cv2.VideoCapture = open_video_capture(video_path)
 
-    video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+    video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
     success: bool
-    frame: np.ndarray
-    success, frame = video_capture.read()
+    video_frame: np.ndarray
+    success, video_frame = video_capture.read()
     video_capture.release()
-    return frame
+    return video_frame
