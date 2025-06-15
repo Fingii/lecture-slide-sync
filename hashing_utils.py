@@ -2,7 +2,7 @@ from imagededup.methods import PHash  # type: ignore
 import numpy as np
 
 
-def _compute_phash(image: np.ndarray) -> str:
+def compute_phash(image: np.ndarray) -> str:
     phasher = PHash()
     return phasher.encode_image(image_array=image)
 
@@ -13,18 +13,16 @@ def compute_phashes(images: list[np.ndarray]) -> list[str]:
     return images_hashes
 
 
-def compute_hamming_distances_to_reference(reference_hash: str, comparison_hashes: list[str]) -> list[float]:
+def compute_hamming_distance(hash1: str, hash2: str) -> float:
     """
-    Computes Hamming distances between a reference hash and a list of comparison hashes.
+    Computes the Hamming distance between two hash strings.
 
     Args:
-        reference_hash: The hash to compare all others against.
-        comparison_hashes: A list of hash strings to be compared to the reference hash.
+        hash1: The first hash string.
+        hash2: The second hash string.
 
     Returns:
-        A list of Hamming distances between the reference hash and each comparison hash.
+        The Hamming distance between the two hashes.
     """
     phasher = PHash()
-    return [
-        phasher.hamming_distance(reference_hash, comparison_hash) for comparison_hash in comparison_hashes
-    ]
+    return phasher.hamming_distance(hash1, hash2)
