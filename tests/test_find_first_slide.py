@@ -4,6 +4,7 @@ import numpy as np
 import json
 from pathlib import Path
 from slide_detection import detect_first_slide
+from video_frame import VideoFrame
 
 TEST_DATA_ROOT = Path(__file__).parent / "test_data"
 FRAME_COUNTS_FILE = TEST_DATA_ROOT / "test_find_first_slide" / "frame_counts.json"
@@ -141,13 +142,11 @@ def test_finds_correct_first_slide_same_image_dimensions(
         expected_slide_path: Path to the manually captured first slide image.
         expected_frame_count: The frame count where the first slide would be
     """
-    result: tuple[np.ndarray, int] | None = detect_first_slide(str(video_path))
+    result: VideoFrame = detect_first_slide(str(video_path))
     assert result is not None, f"No slide detected in video: {video_path}"
 
-    detected_first_slide: np.ndarray
-    detected_first_slide_frame_count: int
-
-    detected_first_slide, detected_first_slide_frame_count = result
+    detected_first_slide: np.ndarray = result.full_frame
+    detected_first_slide_frame_count: int = result.frame_number
 
     expected_frame: np.ndarray | None = cv2.imread(str(expected_slide_path), cv2.IMREAD_UNCHANGED)
 
@@ -182,11 +181,10 @@ def test_rejects_non_first_slide_same_image_dimensions(video_path: Path, not_fir
         not_first_slide_path: Path to a manually captured slide that is NOT the first one.
     """
 
-    result: tuple[np.ndarray, int] | None = detect_first_slide(str(video_path))
+    result: VideoFrame = detect_first_slide(str(video_path))
     assert result is not None, f"No slide detected in video: {video_path}"
 
-    detected_first_slide: np.ndarray
-    detected_first_slide, _ = result
+    detected_first_slide: np.ndarray = result.full_frame
 
     non_first_slide: np.ndarray = cv2.imread(str(not_first_slide_path), cv2.IMREAD_UNCHANGED)
 

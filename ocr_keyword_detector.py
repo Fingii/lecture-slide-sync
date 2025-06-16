@@ -1,10 +1,10 @@
 import numpy as np
 import cv2
 import re
-import pytesseract  # type: ignore
 
 from config import DEBUG_MODE
 from debug_utils import show_image_resized
+from video_frame import VideoFrame
 
 
 def _visualize_keyword_matches(
@@ -96,32 +96,6 @@ def _get_matching_keywords(words: set[str], keywords_to_match: set[str]) -> set[
     return found_keywords
 
 
-def _perform_ocr(frame: np.ndarray) -> dict[str, list[str | int]]:
-    """
-    Extracts text from an image using Optical Character Recognition (OCR).
-
-    Applies Tesseract OCR to the given image and returns extracted text
-    along with metadata.
-
-    Args:
-        frame: A NumPy array representing the image in which text needs to be detected.
-
-    Returns:
-        A dictionary containing:
-        - text = list of recognized words or phrases.
-        - conf = list of confidence scores (0-100) for each detected word.
-        - left = list of x-coordinates for the leftmost position of each word.
-        - top = list of y-coordinates for the topmost position of each word.
-        - width = list of widths of detected words.
-        - height = list of heights of detected words.
-    """
-    return pytesseract.image_to_data(
-        frame,
-        output_type=pytesseract.Output.DICT,
-        config="--psm 11 --oem 3",  # psm11 because we don't care about the order of the text
-    )
-
-
 def _filter_words_by_confidence(ocr_data: dict[str, list[str | int]], confidence_threshold: int) -> set[str]:
     """
     Filters words from OCR data based on a confidence threshold.
@@ -146,7 +120,7 @@ def _filter_words_by_confidence(ocr_data: dict[str, list[str | int]], confidence
 
 
 def are_all_keywords_present(
-    frame: np.ndarray,
+    video_frame: VideoFrame,
     keywords: set[str],
     confidence_threshold: int = 80,
 ) -> bool:
@@ -154,7 +128,7 @@ def are_all_keywords_present(
     Checks whether all specified keywords appear in the image using OCR.
 
     Args:
-        frame: OpenCV image (BGR).
+        video_frame: The video frame to check in if all keywords are present
         keywords: Set of expected words (case-insensitive). Set is used because the order doesn't matter.
         confidence_threshold: Minimum OCR confidence level (0-100).
 
@@ -162,13 +136,12 @@ def are_all_keywords_present(
         True if all keywords are found, False otherwise.
     """
 
-    frame_rgb: np.ndarray = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    ocr_data: dict[str, list[str | int]] = _perform_ocr(frame_rgb)
+    ocr_data: dict[str, list[str | int]] = video_frame.ocr_data
     valid_words: set[str] = _filter_words_by_confidence(ocr_data, confidence_threshold)
     valid_words_non_empty = {word.strip() for word in valid_words if word.strip()}
     found_keywords: set[str] = _get_matching_keywords(valid_words_non_empty, keywords)
 
     if DEBUG_MODE and keywords.issubset(found_keywords):
-        _visualize_keyword_matches(frame, ocr_data, found_keywords)
+        _visualize_keyword_matches(video_frame.full_frame, ocr_data, found_keywords)
 
     return keywords.issubset(found_keywords)
