@@ -59,4 +59,5 @@ class LectureSlides:
             page_text: str = pdf_document[i].get_text()
             extracted_texts.append(page_text)
 
+        pdf_document.close()
         return extracted_texts
