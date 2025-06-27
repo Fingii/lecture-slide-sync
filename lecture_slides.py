@@ -50,13 +50,13 @@ class LectureSlides:
         Extracts raw text from each slide in the PDF using PyMuPDF.
 
         Returns:
-            A list of strings, where each string is the extracted text from one slide.
+            A list of strings, where each element of the list is the extracted text from one slide as a whole string.
         """
         pdf_document: pymupdf.Document = pymupdf.open(self.pdf_path)
         extracted_texts: list[str] = []
 
-        for i in range(pdf_document.page_count):
-            page_text: str = pdf_document[i].get_text()
+        for page in pdf_document:
+            page_text: str = page.get_text()
             extracted_texts.append(page_text)
 
         pdf_document.close()
