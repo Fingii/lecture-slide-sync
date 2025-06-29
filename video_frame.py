@@ -1,5 +1,6 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import cached_property
+import re
 
 import cv2
 import numpy as np
@@ -139,7 +140,7 @@ class VideoFrame:
         return compute_phash(self.roi_frame)
 
     @cached_property
-    def ocr_data(self) -> dict[str, list[str | int]]:
+    def ocr_data_full_frame(self) -> dict[str, list[str | int]]:
         """
         Applies OCR to the full frame and extracts word-level metadata.
 
@@ -153,3 +154,43 @@ class VideoFrame:
             output_type=pytesseract.Output.DICT,
             config="--psm 11 --oem 3",
         )
+
+    @cached_property
+    def ocr_data_roi_frame(self) -> dict[str, list[str | int]]:
+        """
+        Applies OCR to the full frame and extracts word-level metadata.
+
+        Returns:
+            A dictionary containing extracted text and bounding box data from Tesseract OCR.
+            Keys include 'text', 'conf', 'left', 'top', 'width', 'height'.
+        """
+        frame_rgb = cv2.cvtColor(self.roi_frame, cv2.COLOR_BGR2RGB)
+        return pytesseract.image_to_data(
+            frame_rgb,
+            output_type=pytesseract.Output.DICT,
+            config="--psm 11 --oem 3",
+        )
+
+    @cached_property
+    def ocr_word_tokens(self) -> set[str]:
+        """
+        Extracts high-confidence word tokens from the OCR output of the frame.
+
+        This property uses words filtered by confidence and then splits them into tokens,
+        preserving punctuation (e.g. URLs, file paths, emails).
+
+        Returns:
+            A set of tokens (words or punctuation-preserving substrings) extracted from OCR.
+        """
+        from ocr_keyword_detector import filter_words_by_confidence
+
+        confident_words: set[str] = filter_words_by_confidence(
+            self.ocr_data_roi_frame, confidence_threshold=80
+        )
+        tokens: set[str] = set()
+
+        for word in confident_words:
+            parts = re.findall(r"\S+", word)
+            tokens.update(parts)
+
+        return tokens

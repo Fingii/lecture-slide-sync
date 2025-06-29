@@ -96,7 +96,9 @@ def _get_matching_keywords(words: set[str], keywords_to_match: set[str]) -> set[
     return found_keywords
 
 
-def _filter_words_by_confidence(ocr_data: dict[str, list[str | int]], confidence_threshold: int) -> set[str]:
+def filter_words_by_confidence(
+    ocr_data: dict[str, list[str | int]], confidence_threshold: int = 80
+) -> set[str]:
     """
     Filters words from OCR data based on a confidence threshold.
 
@@ -136,9 +138,9 @@ def are_all_keywords_present(
         True if all keywords are found, False otherwise.
     """
 
-    ocr_data: dict[str, list[str | int]] = video_frame.ocr_data
-    valid_words: set[str] = _filter_words_by_confidence(ocr_data, confidence_threshold)
-    valid_words_non_empty = {word.strip() for word in valid_words if word.strip()}
+    ocr_data: dict[str, list[str | int]] = video_frame.ocr_data_full_frame
+    valid_words: set[str] = filter_words_by_confidence(ocr_data, confidence_threshold)
+    valid_words_non_empty: set[str] = {word.strip() for word in valid_words if word.strip()}
     found_keywords: set[str] = _get_matching_keywords(valid_words_non_empty, keywords)
 
     if DEBUG_MODE and keywords.issubset(found_keywords):
