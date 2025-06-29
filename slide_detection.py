@@ -9,23 +9,28 @@ from slide_matcher import SlideTracker
 from debug_utils import show_image_resized
 
 
-def detect_first_slide(video_file_path: str, max_seconds: int = 30) -> VideoFrame:
+def detect_first_slide(
+    video_file_path: str, keywords_to_be_matched: set[str], max_seconds: int = 30
+) -> VideoFrame:
     """
     Scans the beginning of a lecture video to find the first visible slide
     based on the presence of predefined OCR keywords.
 
-    The function reads frames sequentially and performs OCR on each one.
-    It stops when all expected keywords are detected or when the maximum scan duration is exceeded.
+    The function reads video frames sequentially and performs OCR on each one.
+    It stops when all expected keywords are detected in a frame or when the
+    maximum scan duration is exceeded.
 
-     Args:
+    Args:
         video_file_path: Path to the input video file.
+        keywords_to_be_matched: Set of required OCR keywords that must all appear
+                                for a frame to be considered a valid slide.
         max_seconds: Maximum number of seconds to scan for the first slide (default is 30).
 
     Returns:
-        The video frame of the first slide
+        The first VideoFrame containing all required keywords.
 
-     Raises:
-         RuntimeError: If no matching slide is found within the specified time window.
+    Raises:
+        RuntimeError: If no matching slide is found within the specified time window.
     """
     cap: cv2.VideoCapture = open_video_capture(video_file_path)
 
@@ -70,25 +75,30 @@ def is_slide_change_detected(video_frame: VideoFrame, slide_tracker: SlideTracke
     return False
 
 
-def detect_slide_transitions(video_file_path: str, pdf_file_path: str) -> None:
+def detect_slide_transitions(
+    video_file_path: str,
+    pdf_file_path: str,
+    keywords_to_be_matched: set[str],
+) -> None:
     """
     Detects slide transitions in a lecture video by matching video frame content to slides from a given PDF.
 
-    The function begins by identifying the first frame in the video that contains a valid slide.
-    It then precomputes the region of interest (RoI) from that frame and uses it consistently
-    for the rest of the video to improve performance. Each subsequent frame is hashed and compared
-    to the PDF slide hashes. A new slide is only counted as a transition if it is different and comes
-    after the last matched slide (e.g., to avoid backtracking to old slides).
+    The function begins by identifying the first frame in the video that contains a valid slide
+    using OCR keyword matching. It then precomputes the region of interest (RoI) from that frame
+    and uses it consistently for the rest of the video to improve performance. Each subsequent frame
+    is hashed and compared to the PDF slide hashes. A new slide is only counted as a transition
+    if it is different and comes after the last matched slide (to avoid detecting backward navigation).
 
     Args:
         video_file_path: Path to the lecture video file.
         pdf_file_path: Path to the PDF file containing lecture slides.
+        keywords_to_be_matched: A set of required OCR keywords used to detect the first valid slide.
 
     Returns:
         None. Saves a dictionary of detected slide transitions as JSON.
     """
 
-    first_slide_video_frame: VideoFrame = detect_first_slide(video_file_path)
+    first_slide_video_frame = detect_first_slide(video_file_path, keywords_to_be_matched)
     cap: cv2.VideoCapture = open_video_capture(video_file_path)
 
     # RoI precomputed since it remains constant from now on
