@@ -1,3 +1,4 @@
+import json
 import cv2
 
 from video_utils import open_video_capture, generate_video_frame
@@ -69,7 +70,7 @@ def is_slide_change_detected(video_frame: VideoFrame, slide_tracker: SlideTracke
     return False
 
 
-def detect_slide_transitions(video_file_path: str, pdf_file_path: str) -> list[int]:
+def detect_slide_transitions(video_file_path: str, pdf_file_path: str) -> None:
     """
     Detects slide transitions in a lecture video by matching video frame content to slides from a given PDF.
 
@@ -84,7 +85,7 @@ def detect_slide_transitions(video_file_path: str, pdf_file_path: str) -> list[i
         pdf_file_path: Path to the PDF file containing lecture slides.
 
     Returns:
-        A list of frame numbers where valid slide transitions were detected.
+        None. Saves a dictionary of detected slide transitions as JSON.
     """
 
     first_slide_video_frame: VideoFrame = detect_first_slide(video_file_path)
@@ -96,8 +97,7 @@ def detect_slide_transitions(video_file_path: str, pdf_file_path: str) -> list[i
     lecture_slides: LectureSlides = LectureSlides(pdf_file_path)
     slide_tracker: SlideTracker = SlideTracker(lecture_slides)
 
-    slide_change_frame_number: list[int] = []
-
+    slide_changes: dict[int, int] = {}  # slide_index: frame_number
     print("Starting video analysis")
     for video_frame in generate_video_frame(
         cap,
@@ -106,8 +106,9 @@ def detect_slide_transitions(video_file_path: str, pdf_file_path: str) -> list[i
         roi_coordinates=precomputed_roi,
     ):
         if is_slide_change_detected(video_frame, slide_tracker):
-            show_image_resized(video_frame.roi_frame)
-            slide_change_frame_number.append(video_frame.frame_number)
+            slide_changes[slide_tracker.current_slide_index] = video_frame.frame_number
 
     cap.release()
-    return slide_change_frame_number
+
+    with open("slide_changes.json", "w", encoding="utf-8") as f:
+        json.dump(slide_changes, f, indent=4)
