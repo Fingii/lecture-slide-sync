@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 from functools import cached_property
 from PIL import Image
+
 import numpy as np
 import cv2
+import re
 import pymupdf  # type: ignore
 
 from hashing_utils import compute_phashes
@@ -61,3 +63,22 @@ class LectureSlides:
 
         pdf_document.close()
         return extracted_texts
+
+    @cached_property
+    def word_tokens(self) -> list[set[str]]:
+        """
+        Tokenizes the text of each PDF slide into a set of words.
+
+        Returns:
+            A list of sets, where each set contains the unique tokens for one slide.
+        """
+        pdf_document: pymupdf.Document = pymupdf.open(self.pdf_path)
+        slide_tokens: list[set[str]] = []
+
+        for page in pdf_document:
+            page_text: str = page.get_text()
+            tokens: set[str] = set(re.findall(r"\S+", page_text))  # Keeps punctuation
+            slide_tokens.append(tokens)
+
+        pdf_document.close()
+        return slide_tokens

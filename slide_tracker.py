@@ -24,7 +24,7 @@ class SlideTracker:
     current_slide_index: int = field(init=False, default=-1)
     _max_hamming_distance: int = 8
 
-    def find_most_similar_slide_index(self, video_frame: VideoFrame) -> int | None:
+    def find_most_similar_slide_index(self, video_frame: VideoFrame) -> tuple[int, float] | None:
         """
         Compares the hash of the given video frame to all slide hashes and finds the most similar match.
 
@@ -32,7 +32,7 @@ class SlideTracker:
             video_frame: The video frame whose RoI hash is to be matched.
 
         Returns:
-            The slide index which was most similar to the given video frame
+            A tuple of (most similar slide index, hamming distance) if below threshold, otherwise None.
         """
         current_hash: str = video_frame.roi_hash
         min_hamming_distance: float = float("inf")
@@ -45,7 +45,7 @@ class SlideTracker:
                 most_similar_slide_index = i
 
         if min_hamming_distance <= self._max_hamming_distance:
-            return most_similar_slide_index
+            return most_similar_slide_index, min_hamming_distance
         return None
 
     def update_slide_index(self, new_index: int) -> None:
