@@ -36,7 +36,6 @@ def detect_first_slide(
 
     fps: float = float(cap.get(cv2.CAP_PROP_FPS))
     max_attempts: int = int(max_seconds * fps)
-    keywords_to_be_matched: set[str] = {"UNIVERSITY", "FH", "AACHEN", "OF", "APPLIED", "SCIENCES"}
 
     for video_frame in generate_video_frame(cap, frames_step=1):
         if video_frame.frame_number >= max_attempts:
