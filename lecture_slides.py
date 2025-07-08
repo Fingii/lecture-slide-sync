@@ -7,6 +7,9 @@ import cv2
 import re
 import pymupdf  # type: ignore
 
+from hashing_utils import compute_phashes
+
+
 @dataclass
 class LectureSlides:
     """
@@ -38,6 +41,10 @@ class LectureSlides:
 
         pdf_document.close()
         return images
+
+    @cached_property
+    def hashes(self) -> list[str]:
+        return compute_phashes(self._images)
 
     @cached_property
     def word_tokens(self) -> list[set[str]]:

@@ -27,6 +27,7 @@ coverage/
 *.mp4
 *.pdf
 temp_*
+tests/test_data
 
 # Python packaging/build files
 build/
