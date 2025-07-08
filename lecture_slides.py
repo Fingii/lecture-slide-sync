@@ -7,9 +7,6 @@ import cv2
 import re
 import pymupdf  # type: ignore
 
-from hashing_utils import compute_phashes
-
-
 @dataclass
 class LectureSlides:
     """
