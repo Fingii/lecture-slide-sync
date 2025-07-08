@@ -43,28 +43,6 @@ class LectureSlides:
         return images
 
     @cached_property
-    def hashes(self) -> list[str]:
-        return compute_phashes(self._images)
-
-    @cached_property
-    def texts(self) -> list[str]:
-        """
-        Extracts raw text from each slide in the PDF using PyMuPDF.
-
-        Returns:
-            A list of strings, where each element of the list is the extracted text from one slide as a whole string.
-        """
-        pdf_document: pymupdf.Document = pymupdf.open(self.pdf_path)
-        extracted_texts: list[str] = []
-
-        for page in pdf_document:
-            page_text: str = page.get_text()
-            extracted_texts.append(page_text)
-
-        pdf_document.close()
-        return extracted_texts
-
-    @cached_property
     def word_tokens(self) -> list[set[str]]:
         """
         Tokenizes the text of each PDF slide into a set of words.

@@ -1,0 +1,27 @@
+# Don't copy local dev folders into Docker image
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+.idea/
+.vscode/
+.mypy_cache/
+.pytest_cache/
+
+# Avoid uploading test files or large local data
+tests/
+*.log
+*.mp4
+*.pdf
+temp_*
+
+# Avoid uploading Git metadata into the Docker context
+.git/
+.gitignore
+
+# Don't copy project metadata
+README.md
+Dockerfile
