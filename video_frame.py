@@ -6,8 +6,6 @@ import cv2
 import numpy as np
 from pytesseract import pytesseract  # type: ignore
 
-from config import DEBUG_MODE
-from debug_utils import show_image_resized
 from hashing_utils import compute_phash
 from image_utils import add_black_border
 
@@ -69,36 +67,6 @@ class VideoFrame:
 
         largest_contour_bottom_right_x: int = largest_contour_top_left_x + largest_contour_width
         largest_contour_bottom_right_y: int = largest_contour_top_left_y + largest_contour_height
-
-        if DEBUG_MODE:
-            visualization_image: np.ndarray = padded_image.copy()
-
-            # Extract RoI if a valid region is found
-            roi: np.ndarray = padded_image[
-                largest_contour_top_left_y:largest_contour_bottom_right_y,
-                largest_contour_top_left_x:largest_contour_bottom_right_x,
-            ]
-
-            for cnt in contours:
-                top_left_x_debug, top_left_y_debug, width_debug, height_debug = cv2.boundingRect(cnt)
-                cv2.rectangle(
-                    visualization_image,
-                    (top_left_x_debug, top_left_y_debug),
-                    (top_left_x_debug + width_debug, top_left_y_debug + height_debug),
-                    (0, 0, 255),
-                    2,
-                )
-
-            contour_visualization: np.ndarray = padded_image.copy()
-            cv2.drawContours(contour_visualization, contours, -1, (0, 0, 255), 2)
-
-            show_image_resized(self.full_frame, "Orignal Image")
-            show_image_resized(padded_image, "Padded Image")
-            show_image_resized(gray_scale_image, "Gray Scale Image")
-            show_image_resized(canny_edges, "Canny Edge Image")
-            show_image_resized(contour_visualization, "Contour Image")
-            show_image_resized(visualization_image, "Contour Bounding Boxes Image")
-            show_image_resized(roi, "Extracted RoI Image")
 
         largest_contour_area: int = largest_contour_width * largest_contour_height
 

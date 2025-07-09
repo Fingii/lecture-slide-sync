@@ -1,4 +1,3 @@
-import json
 import cv2
 
 from video_utils import open_video_capture, generate_video_frame
@@ -6,7 +5,6 @@ from ocr_keyword_detector import are_all_keywords_present
 from video_frame import VideoFrame
 from lecture_slides import LectureSlides
 from slide_tracker import SlideTracker
-from debug_utils import show_image_resized
 
 
 def detect_first_slide(
@@ -166,7 +164,7 @@ def detect_slide_transitions(
     video_file_path: str,
     pdf_file_path: str,
     keywords_to_be_matched: set[str],
-) -> None:
+) -> dict[int, int]:
     """
     Detects slide transitions in a lecture video by matching video frame content to slides from a given PDF.
 
@@ -195,7 +193,6 @@ def detect_slide_transitions(
     slide_tracker: SlideTracker = SlideTracker(lecture_slides)
 
     slide_changes: dict[int, int] = {}  # slide_index: frame_number
-    print("Starting video analysis")
     for video_frame in generate_video_frame(
         cap,
         frames_step=100,
@@ -206,6 +203,4 @@ def detect_slide_transitions(
             slide_changes[slide_tracker.current_slide_index] = video_frame.frame_number
 
     cap.release()
-
-    with open("slide_changes.json", "w", encoding="utf-8") as f:
-        json.dump(slide_changes, f, indent=4)
+    return slide_changes
