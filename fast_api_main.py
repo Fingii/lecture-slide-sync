@@ -59,7 +59,7 @@ def form():
             <label>PDF file:</label>
             <input type="file" name="pdf" required><br>
             <label>Keywords (space separated):</label>
-            <input type="text" name="keywords" placeholder="e.g. FH AACHEN SCIENCES" required><br>
+            <input type="text" name="keywords" value="FH AACHEN UNIVERSITY OF APPLIED SCIENCES" placeholder="e.g. FH AACHEN UNIVERSITY OF APPLIED SCIENCES" required><br>
             <button type="submit">Detect</button>
             <button type="button" id="cancelBtn" style="background-color:#dc3545;">Cancel</button>
         </form>
@@ -121,7 +121,7 @@ def form():
 
 @app.post("/detect")
 async def detect(
-    keywords: Annotated[str, Form(...)],
+    keywords: Annotated[str, Form()] = "FH AACHEN UNIVERSITY OF APPLIED SCIENCES",
     video: UploadFile = File(...),
     pdf: UploadFile = File(...),
 ):
