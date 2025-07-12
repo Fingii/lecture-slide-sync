@@ -1,10 +1,12 @@
-import cv2
+import av
 
-from video_utils import open_video_capture, generate_video_frame
+from video_utils import generate_video_frame
 from ocr_keyword_detector import are_all_keywords_present
 from video_frame import VideoFrame
 from lecture_slides import LectureSlides
 from slide_tracker import SlideTracker
+
+from fractions import Fraction
 
 
 def detect_first_slide(
@@ -30,19 +32,25 @@ def detect_first_slide(
     Raises:
         RuntimeError: If no matching slide is found within the specified time window.
     """
-    cap: cv2.VideoCapture = open_video_capture(video_file_path)
+    with av.open(video_file_path) as container:
+        video_stream = container.streams.video[0]
+        avg_rate: Fraction | None = video_stream.average_rate
 
-    fps: float = float(cap.get(cv2.CAP_PROP_FPS))
-    max_attempts: int = int(max_seconds * fps)
+        if avg_rate is None:
+            raise ValueError("Video stream has no average_rate metadata.")
 
-    for video_frame in generate_video_frame(cap, frames_step=1):
+        fps: float = float(avg_rate)
+        max_attempts: int = int(max_seconds * fps)
+
+    for video_frame in generate_video_frame(
+        video_path=video_file_path,
+        frames_step=1,
+    ):
         if video_frame.frame_number >= max_attempts:
             break
         if are_all_keywords_present(video_frame, keywords_to_be_matched):
-            cap.release()
             return video_frame
 
-    cap.release()
     raise RuntimeError(f"No slide detected within the first {max_seconds} seconds of the video.")
 
 
@@ -138,7 +146,7 @@ def is_slide_change_detected(
     if most_similar_slide_index <= slide_tracker.current_slide_index:
         return False
 
-    # Definite match — no OCR needed, helpful for image slides, where PDF text is not extractable
+    # Definite match — no OCR needed, helpful for image slides, where PDF text is not extractable from images
     if most_similar_slide_index_hamming_distance < 2:
         slide_tracker.update_slide_index(most_similar_slide_index)
         return True
@@ -146,9 +154,8 @@ def is_slide_change_detected(
     pdf_tokens: set[str] = slide_tracker.lecture_slides.word_tokens[most_similar_slide_index]
     normalized_pdf_tokens: set[str] = normalize_token_set(pdf_tokens, keywords_to_ignore)
 
-    video_frame_ocr_tokens: set[str] = video_frame.ocr_word_tokens
     normalized_video_frame_ocr_tokens: set[str] = normalize_token_set(
-        video_frame_ocr_tokens, keywords_to_ignore
+        video_frame.ocr_word_tokens, keywords_to_ignore
     )
 
     token_similarity: float = jaccard_similarity(normalized_pdf_tokens, normalized_video_frame_ocr_tokens)
@@ -180,11 +187,10 @@ def detect_slide_transitions(
         keywords_to_be_matched: A set of required OCR keywords used to detect the first valid slide.
 
     Returns:
-        None. Saves a dictionary of detected slide transitions as JSON.
+        A dictionary mapping slide indices to their frame number.
     """
 
     first_slide_video_frame: VideoFrame = detect_first_slide(video_file_path, keywords_to_be_matched)
-    cap: cv2.VideoCapture = open_video_capture(video_file_path)
 
     # RoI precomputed since it remains constant from now on
     precomputed_roi: tuple[int, int, int, int] = first_slide_video_frame.compute_roi_coordinates()
@@ -194,7 +200,7 @@ def detect_slide_transitions(
 
     slide_changes: dict[int, int] = {}  # slide_index: frame_number
     for video_frame in generate_video_frame(
-        cap,
+        video_path=video_file_path,
         frames_step=100,
         start_frame_number=first_slide_video_frame.frame_number,
         roi_coordinates=precomputed_roi,
@@ -202,5 +208,4 @@ def detect_slide_transitions(
         if is_slide_change_detected(video_frame, slide_tracker, keywords_to_be_matched):
             slide_changes[slide_tracker.current_slide_index] = video_frame.frame_number
 
-    cap.release()
     return slide_changes
