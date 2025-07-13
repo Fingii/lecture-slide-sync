@@ -137,18 +137,17 @@ def is_slide_change_detected(
     Returns:
         True if a valid new slide is detected and confirmed, False otherwise.
     """
-
     match: tuple[int, float] | None = slide_tracker.find_most_similar_slide_index(video_frame)
     if match is None:
         return False
     most_similar_slide_index, most_similar_slide_index_hamming_distance = match
 
-    if most_similar_slide_index <= slide_tracker.current_slide_index:
+    if slide_tracker.has_seen_slide(most_similar_slide_index):
         return False
 
     # Definite match — no OCR needed, helpful for image slides, where PDF text is not extractable from images
     if most_similar_slide_index_hamming_distance < 2:
-        slide_tracker.update_slide_index(most_similar_slide_index)
+        slide_tracker.mark_slide_as_seen(most_similar_slide_index)
         return True
 
     pdf_tokens: set[str] = slide_tracker.lecture_slides.word_tokens[most_similar_slide_index]
@@ -161,7 +160,7 @@ def is_slide_change_detected(
     token_similarity: float = jaccard_similarity(normalized_pdf_tokens, normalized_video_frame_ocr_tokens)
 
     if token_similarity >= 0.65:
-        slide_tracker.update_slide_index(most_similar_slide_index)
+        slide_tracker.mark_slide_as_seen(most_similar_slide_index)
         return True
 
     return False
@@ -206,6 +205,7 @@ def detect_slide_transitions(
         roi_coordinates=precomputed_roi,
     ):
         if is_slide_change_detected(video_frame, slide_tracker, keywords_to_be_matched):
-            slide_changes[slide_tracker.current_slide_index] = video_frame.frame_number
+            slide_changes[slide_tracker.current_slide_index + 1] = video_frame.frame_number
+            print(slide_changes)
 
     return slide_changes
