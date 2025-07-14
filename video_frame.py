@@ -140,25 +140,16 @@ class VideoFrame:
         )
 
     @cached_property
-    def ocr_word_tokens(self) -> set[str]:
+    def ocr_confident_text(self) -> str:
         """
-        Extracts high-confidence word tokens from the OCR output of the frame.
-
-        This property uses words filtered by confidence and then splits them into tokens,
-        preserving punctuation (e.g. URLs, file paths, emails).
+        Reconstructs a text string from high-confidence OCR words in the RoI.
 
         Returns:
-            A set of tokens (words or punctuation-preserving substrings) extracted from OCR.
+            A string composed only of words with OCR confidence >= 80.
         """
         from ocr_keyword_detector import filter_words_by_confidence
 
         confident_words: set[str] = filter_words_by_confidence(
             self.ocr_data_roi_frame, confidence_threshold=80
         )
-        tokens: set[str] = set()
-
-        for word in confident_words:
-            parts = re.findall(r"\S+", word)
-            tokens.update(parts)
-
-        return tokens
+        return " ".join(sorted(confident_words))

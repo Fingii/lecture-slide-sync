@@ -1,3 +1,4 @@
+import re
 import av
 
 from video_utils import generate_video_frame
@@ -7,6 +8,38 @@ from lecture_slides import LectureSlides
 from slide_tracker import SlideTracker
 
 from fractions import Fraction
+from thefuzz import fuzz  # type: ignore
+
+
+def normalize_text(
+    raw_text: str,
+    keywords_to_ignore: set[str] | None = None,
+    lowercase: bool = True,
+    min_length: int = 2,
+) -> str:
+    """
+    Normalizes raw text by optionally removing short words and ignored keywords.
+
+    Args:
+        raw_text: The input string to normalize.
+        keywords_to_ignore: Optional set of keywords to exclude (case-insensitive).
+        lowercase: Whether to convert text to lowercase.
+        min_length: Minimum word length to retain.
+
+    Returns:
+        A cleaned string ready for text similarity comparison.
+    """
+    if lowercase:
+        raw_text = raw_text.lower()
+        keywords_to_ignore = {kw.lower() for kw in (keywords_to_ignore or set())}
+    else:
+        keywords_to_ignore = keywords_to_ignore or set()
+
+    words: list[str] = re.findall(r"\S+", raw_text)
+    cleaned_words: list[str] = [
+        word for word in words if word not in keywords_to_ignore and len(word) >= min_length
+    ]
+    return " ".join(cleaned_words)
 
 
 def detect_first_slide(
@@ -54,88 +87,24 @@ def detect_first_slide(
     raise RuntimeError(f"No slide detected within the first {max_seconds} seconds of the video.")
 
 
-def jaccard_similarity(set1: set[str], set2: set[str]) -> float:
-    """
-    Calculates the Jaccard similarity between two sets of strings.
-
-    Jaccard similarity is defined as the size of the intersection divided by
-    the size of the union of the two sets.
-
-    Args:
-        set1: First set of strings.
-        set2: Second set of strings.
-
-    Returns:
-        A float value between 0 and 1 representing the Jaccard similarity.
-        Returns 0.0 if both sets are empty.
-    """
-    if not set1 and not set2:
-        return 0.0
-
-    intersection = set1 & set2
-    union = set1 | set2
-    return len(intersection) / len(union)
-
-
-def normalize_token_set(
-    original_token_set: set[str],
-    keywords_to_ignore: set[str] | None = None,
-    remove_short_tokens: bool = True,
-    lowercase: bool = True,
-    min_length: int = 2,
-) -> set[str]:
-    """
-    Normalizes a set of tokens for text similarity comparisons.
-
-    Args:
-        original_token_set: The original set of tokens.
-        keywords_to_ignore: Set of keywords to remove from the token set.
-        remove_short_tokens: If True, removes tokens below min_length.
-        lowercase: If True, converts all tokens to lowercase.
-        min_length: Minimum token length (inclusive) to keep if remove_short_tokens is enabled.
-
-    Returns:
-        A new set of normalized tokens.
-    """
-
-    if keywords_to_ignore is None:
-        keywords_to_ignore = set()
-
-    normalized_set: set[str] = set()
-
-    for token in original_token_set:
-        if lowercase:
-            token = token.lower()
-
-        if token in keywords_to_ignore:
-            continue
-
-        if remove_short_tokens and len(token) < min_length:
-            continue
-
-        normalized_set.add(token)
-
-    return normalized_set
-
-
 def is_slide_change_detected(
     video_frame: VideoFrame, slide_tracker: SlideTracker, keywords_to_ignore: set[str]
 ) -> bool:
     """
     Determines whether the current video frame represents a new forward slide transition.
 
-    This function first matches the frame to a known slide using perceptual hashing.
-    If the hash match is very strong (distance < 2), the match is accepted directly.
-    Otherwise, the function uses OCR-based Jaccard similarity to confirm the match.
-    Tokens such as predefined recurring keywords can be excluded from this comparison.
+    The function first attempts to match the video frame to one of the PDF slides using perceptual hashing.
+    If the match is highly confident (Hamming distance < 2), the slide is accepted immediately.
+    Otherwise, OCR is used to extract high-confidence text from the video frame, and the slide's PDF text is also extracted.
+    Both texts are normalized (e.g., filtered, lowercased, keywords removed) and compared using fuzzy token set similarity.
 
     Args:
         video_frame: The current VideoFrame to evaluate.
         slide_tracker: An instance of SlideTracker managing slide state and hash matching.
-        keywords_to_ignore: A set of common tokens (e.g. "FH", "AACHEN") to exclude from similarity checks.
+        keywords_to_ignore: A set of recurring words to exclude during text comparison (e.g., university names, headers).
 
     Returns:
-        True if a valid new slide is detected and confirmed, False otherwise.
+        True if a valid and unseen new slide is detected and confirmed; False otherwise.
     """
     match: tuple[int, float] | None = slide_tracker.find_most_similar_slide_index(video_frame)
     if match is None:
@@ -150,16 +119,14 @@ def is_slide_change_detected(
         slide_tracker.mark_slide_as_seen(most_similar_slide_index)
         return True
 
-    pdf_tokens: set[str] = slide_tracker.lecture_slides.word_tokens[most_similar_slide_index]
-    normalized_pdf_tokens: set[str] = normalize_token_set(pdf_tokens, keywords_to_ignore)
+    pdf_page_text: str = slide_tracker.lecture_slides.plain_texts[most_similar_slide_index]
+    ocr_text: str = video_frame.ocr_confident_text
 
-    normalized_video_frame_ocr_tokens: set[str] = normalize_token_set(
-        video_frame.ocr_word_tokens, keywords_to_ignore
-    )
+    normalized_pdf_page_text: str = normalize_text(pdf_page_text, keywords_to_ignore)
+    normalized_ocr_text: str = normalize_text(ocr_text, keywords_to_ignore)
 
-    token_similarity: float = jaccard_similarity(normalized_pdf_tokens, normalized_video_frame_ocr_tokens)
-
-    if token_similarity >= 0.65:
+    similarity = fuzz.token_set_ratio(normalized_pdf_page_text, normalized_ocr_text)
+    if similarity >= 75:
         slide_tracker.mark_slide_as_seen(most_similar_slide_index)
         return True
 
