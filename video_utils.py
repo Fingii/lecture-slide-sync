@@ -1,6 +1,8 @@
 from typing import Generator
 from video_frame import VideoFrame
 
+from fractions import Fraction
+
 import numpy as np
 import av
 
@@ -72,3 +74,30 @@ def generate_video_frame(
                 frame_timestamp_seconds=current_frame_second,
                 roi_coordinates=roi_coordinates,
             )
+
+
+def get_video_fps(video_path: str) -> float:
+    """
+    Retrieves the average frames per second (FPS) of a video file.
+
+    Args:
+        video_path: Path to the input video file.
+
+    Returns:
+        The average FPS as a float.
+
+    Raises:
+        ValueError: If the video stream does not contain average_rate metadata.
+    """
+
+    fps: float = 25
+
+    with av.open(video_path) as container:
+        video_stream: av.video.stream.VideoStream = container.streams.video[0]
+        average_rate: Fraction | None = video_stream.average_rate
+
+        if average_rate is None:
+            raise ValueError("Video stream has no average_rate metadata.")
+        fps = float(average_rate)
+
+    return fps

@@ -1,13 +1,11 @@
 import re
-import av
 
-from video_utils import generate_video_frame
+from video_utils import generate_video_frame, get_video_fps
 from ocr_keyword_detector import are_all_keywords_present
 from video_frame import VideoFrame
 from lecture_slides import LectureSlides
 from slide_tracker import SlideTracker
 
-from fractions import Fraction
 from thefuzz import fuzz  # type: ignore
 
 
@@ -65,15 +63,8 @@ def detect_first_slide(
     Raises:
         RuntimeError: If no matching slide is found within the specified time window.
     """
-    with av.open(video_file_path) as container:
-        video_stream = container.streams.video[0]
-        avg_rate: Fraction | None = video_stream.average_rate
-
-        if avg_rate is None:
-            raise ValueError("Video stream has no average_rate metadata.")
-
-        fps: float = float(avg_rate)
-        max_attempts: int = int(max_seconds * fps)
+    fps: float = get_video_fps(video_file_path)
+    max_attempts: int = int(max_seconds * fps)
 
     for video_frame in generate_video_frame(
         video_path=video_file_path,
