@@ -128,7 +128,7 @@ def detect_slide_transitions(
     video_file_path: str,
     pdf_file_path: str,
     keywords_to_be_matched: set[str],
-) -> dict[int, int]:
+) -> dict[int, float]:
     """
     Detects slide transitions in a lecture video by matching video frame content to slides from a given PDF.
 
@@ -144,18 +144,17 @@ def detect_slide_transitions(
         keywords_to_be_matched: A set of required OCR keywords used to detect the first valid slide.
 
     Returns:
-        A dictionary mapping slide indices to their frame number.
+        A dictionary mapping 1-based slide indices to their start timestamps in seconds.
     """
-
     first_slide_video_frame: VideoFrame = detect_first_slide(video_file_path, keywords_to_be_matched)
 
-    # RoI precomputed since it remains constant from now on
+    # RoI precomputed once since it's constant, avoiding redundant work per frame
     precomputed_roi: tuple[int, int, int, int] = first_slide_video_frame.compute_roi_coordinates()
 
     lecture_slides: LectureSlides = LectureSlides(pdf_file_path)
     slide_tracker: SlideTracker = SlideTracker(lecture_slides)
 
-    slide_changes: dict[int, int] = {}  # slide_index: frame_number
+    slide_changes_seconds: dict[int, float] = {}  # slide_index (1-based): timestamp_seconds
     for video_frame in generate_video_frame(
         video_path=video_file_path,
         frames_step=100,
@@ -163,6 +162,6 @@ def detect_slide_transitions(
         roi_coordinates=precomputed_roi,
     ):
         if is_slide_change_detected(video_frame, slide_tracker, keywords_to_be_matched):
-            slide_changes[slide_tracker.current_slide_index + 1] = video_frame.frame_number
+            slide_changes_seconds[slide_tracker.current_slide_index + 1] = video_frame.frame_timestamp_seconds
 
-    return slide_changes
+    return slide_changes_seconds
