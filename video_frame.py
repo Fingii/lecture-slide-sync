@@ -22,6 +22,7 @@ class VideoFrame:
 
     full_frame: np.ndarray
     frame_number: int
+    frame_timestamp_seconds: float
     roi_coordinates: tuple[int, int, int, int] | None = None
 
     def compute_roi_coordinates(self) -> tuple[int, int, int, int]:

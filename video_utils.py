@@ -69,5 +69,6 @@ def generate_video_frame(
             yield VideoFrame(
                 full_frame=decoded_frame_ndarray,
                 frame_number=current_frame_number,
+                frame_timestamp_seconds=current_frame_second,
                 roi_coordinates=roi_coordinates,
             )
