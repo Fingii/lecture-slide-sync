@@ -128,6 +128,7 @@ def detect_slide_transitions(
     video_file_path: str,
     pdf_file_path: str,
     keywords_to_be_matched: set[str],
+    sampling_interval_seconds: float = 1.0,
 ) -> dict[int, float]:
     """
     Detects slide transitions in a lecture video by matching video frame content to slides from a given PDF.
@@ -142,6 +143,7 @@ def detect_slide_transitions(
         video_file_path: Path to the lecture video file.
         pdf_file_path: Path to the PDF file containing lecture slides.
         keywords_to_be_matched: A set of required OCR keywords used to detect the first valid slide.
+        sampling_interval_seconds: Time interval between analyzed frames (in seconds).
 
     Returns:
         A dictionary mapping 1-based slide indices to their start timestamps in seconds.
@@ -154,10 +156,13 @@ def detect_slide_transitions(
     lecture_slides: LectureSlides = LectureSlides(pdf_file_path)
     slide_tracker: SlideTracker = SlideTracker(lecture_slides)
 
+    fps = get_video_fps(video_file_path)
+    frame_steps = max(1, int(round(fps * sampling_interval_seconds)))
+
     slide_changes_seconds: dict[int, float] = {}  # slide_index (1-based): timestamp_seconds
     for video_frame in generate_video_frame(
         video_path=video_file_path,
-        frames_step=100,
+        frames_step=frame_steps,
         start_frame_number=first_slide_video_frame.frame_number,
         roi_coordinates=precomputed_roi,
     ):
