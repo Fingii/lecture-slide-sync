@@ -32,6 +32,7 @@ def generate_video_frame(
     """
     with av.open(video_path) as container:
         video_stream: av.video.stream.VideoStream = container.streams.video[0]
+        video_stream.thread_type = "AUTO"
 
         if video_stream.average_rate is None:
             raise ValueError("video_stream.average_rate is None")
