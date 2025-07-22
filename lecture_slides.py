@@ -47,20 +47,11 @@ class LectureSlides:
         return compute_phashes(self._images)
 
     @cached_property
-    def word_tokens(self) -> list[set[str]]:
+    def plain_texts(self) -> list[str]:
         """
-        Tokenizes the text of each PDF slide into a set of words.
-
-        Returns:
-            A list of sets, where each set contains the unique tokens for one slide.
+        Extracts raw text from each slide in the PDF.
         """
-        pdf_document: pymupdf.Document = pymupdf.open(self.pdf_path)
-        slide_tokens: list[set[str]] = []
-
-        for page in pdf_document:
-            page_text: str = page.get_text()
-            tokens: set[str] = set(re.findall(r"\S+", page_text))  # Keeps punctuation
-            slide_tokens.append(tokens)
-
+        pdf_document = pymupdf.open(self.pdf_path)
+        all_text = [page.get_text() for page in pdf_document]
         pdf_document.close()
-        return slide_tokens
+        return all_text

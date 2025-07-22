@@ -22,6 +22,7 @@ class SlideTracker:
 
     lecture_slides: LectureSlides
     current_slide_index: int = field(init=False, default=-1)
+    seen_slide_indices: set[int] = field(init=False, default_factory=set)
     _max_hamming_distance: int = 8
 
     def find_most_similar_slide_index(self, video_frame: VideoFrame) -> tuple[int, float] | None:
@@ -48,13 +49,9 @@ class SlideTracker:
             return most_similar_slide_index, min_hamming_distance
         return None
 
-    def update_slide_index(self, new_index: int) -> None:
-        """
-        Updates the tracker's internal current slide index to the given value.
+    def mark_slide_as_seen(self, index: int) -> None:
+        self.seen_slide_indices.add(index)
+        self.current_slide_index = index
 
-        Intended to be called externally after confirming a valid forward transition.
-
-        Args:
-            new_index: Index of the newly confirmed slide.
-        """
-        self.current_slide_index = new_index
+    def has_seen_slide(self, index: int) -> bool:
+        return index in self.seen_slide_indices
