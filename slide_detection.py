@@ -1,6 +1,6 @@
 import re
 
-from process_srt import merge_srt_by_slide_ranges
+from srt_utils import merge_srt_by_slide_ranges
 from video_utils import generate_video_frame, get_video_fps
 from ocr_keyword_detector import are_all_keywords_present
 from video_frame import VideoFrame
