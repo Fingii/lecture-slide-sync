@@ -12,7 +12,8 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import HTMLResponse
 from fastapi.responses import StreamingResponse
 
-from slide_detection import detect_slide_transition_and_merge_srt
+from slide_detection import detect_slide_transitions
+from srt_utils import merge_srt_by_slide_ranges, transcribe_video_to_srt
 
 app = FastAPI()
 
@@ -62,8 +63,6 @@ def form():
             <input type="file" name="video" required><br>
             <label>PDF file:</label>
             <input type="file" name="pdf" required><br>
-            <label>SRT file:</label>
-            <input type="file" name="srt" required><br>
             <label>Keywords (space separated):</label>
             <input type="text" name="keywords" value="FH AACHEN UNIVERSITY OF APPLIED SCIENCES" required><br>
             <label>Sampling interval (seconds):</label>
@@ -227,35 +226,34 @@ async def detect(
     sampling_interval: Annotated[float, Form()] = 1.0,
     video: UploadFile = File(...),
     pdf: UploadFile = File(...),
-    srt: UploadFile = File(...),
 ):
     keywords_set = set(k.strip().upper() for k in keywords.split())
 
     video_path = f"temp_{uuid.uuid4()}_{video.filename}"
     pdf_path = f"temp_{uuid.uuid4()}_{pdf.filename}"
-    srt_path = f"temp_{uuid.uuid4()}_{srt.filename}"
 
     try:
-        for uploaded, path in [(video, video_path), (pdf, pdf_path), (srt, srt_path)]:
+        for uploaded, path in [(video, video_path), (pdf, pdf_path)]:
             with open(path, "wb") as f:
                 shutil.copyfileobj(uploaded.file, f)
 
-        merged_srt_str = detect_slide_transition_and_merge_srt(
+        srt_content = transcribe_video_to_srt(video_path)
+        slide_changes = detect_slide_transitions(
             video_file_path=video_path,
             pdf_file_path=pdf_path,
-            srt_file_path=srt_path,
             keywords_to_be_matched=keywords_set,
             sampling_interval_seconds=sampling_interval,
         )
+        merged_srt: str = merge_srt_by_slide_ranges(srt_content, slide_changes)
 
         return StreamingResponse(
-            BytesIO(merged_srt_str.encode("utf-8")),
+            BytesIO(merged_srt.encode("utf-8")),
             media_type="text/plain",
             headers={"Content-Disposition": "attachment; filename=merged.srt"},
         )
 
     finally:
-        for path in [video_path, pdf_path, srt_path]:
+        for path in [video_path, pdf_path]:
             if os.path.exists(path):
                 os.remove(path)
 
@@ -286,19 +284,22 @@ async def batch_detect(
     for video in extract_dir.glob("*.mp4"):
         name_stem = video.stem
         pdf = extract_dir / f"{name_stem}.pdf"
-        srt = extract_dir / f"{name_stem}.srt"
 
-        if not (pdf.exists() and srt.exists()):
+        if not pdf.exists():
             continue
 
         start_time = time.time()
-        merged_srt = detect_slide_transition_and_merge_srt(
-            str(video),
-            str(pdf),
-            str(srt),
+
+        slide_changes = detect_slide_transitions(
+            video_file_path=str(video),
+            pdf_file_path=str(pdf),
             keywords_to_be_matched=keywords_set,
             sampling_interval_seconds=sampling_interval,
         )
+
+        srt_content = transcribe_video_to_srt(str(video))
+        merged_srt = merge_srt_by_slide_ranges(srt_content, slide_changes)
+
         duration = time.time() - start_time
         durations.append((video.name, round(duration, 2)))
 

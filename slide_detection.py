@@ -1,6 +1,5 @@
 import re
 
-from srt_utils import merge_srt_by_slide_ranges
 from video_utils import generate_video_frame, get_video_fps
 from ocr_keyword_detector import are_all_keywords_present
 from video_frame import VideoFrame
@@ -171,21 +170,3 @@ def detect_slide_transitions(
             slide_changes_seconds[slide_tracker.current_slide_index + 1] = video_frame.frame_timestamp_seconds
 
     return slide_changes_seconds
-
-
-def detect_slide_transition_and_merge_srt(
-    video_file_path: str,
-    pdf_file_path: str,
-    srt_file_path: str,
-    keywords_to_be_matched: set[str],
-    sampling_interval_seconds: float = 1.0,
-) -> str:
-
-    slide_changes = detect_slide_transitions(
-        video_file_path,
-        pdf_file_path,
-        keywords_to_be_matched,
-        sampling_interval_seconds,
-    )
-
-    return merge_srt_by_slide_ranges(srt_file_path, slide_changes)

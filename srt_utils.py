@@ -21,28 +21,27 @@ class SlideBlock(TypedDict):
 
 def transcribe_video_to_srt(
     video_path: str,
-    srt_save_path: str,
     model_size: str = "base",
     language: str = "de",
-) -> None:
+) -> str:
     """
-    Transcribes a video file to SRT format using faster-whisper and saves it .
+    Transcribes a video file to SRT format using faster-whisper.
 
     Args:
         video_path: Path to the input video file.
-        srt_save_path: Path where the output .srt file should be saved.
         model_size: Model variant to use (tiny, base, small, medium, large).
         language: Language code (e.g., "de", "en" etc.).
     """
-    whisper_model: WhisperModel = WhisperModel(model_size, compute_type="auto", cpu_threads=os.cpu_count())
-
+    whisper_model = WhisperModel(model_size, compute_type="auto", cpu_threads=os.cpu_count())
     segments, _ = whisper_model.transcribe(audio=video_path, language=language, log_progress=True)
 
-    with open(srt_save_path, "w", encoding="utf-8") as srt_file:
-        for i, segment in enumerate(segments, start=1):
-            srt_file.write(f"{i}\n")
-            srt_file.write(f"{seconds_to_srt_time(segment.start)} --> {seconds_to_srt_time(segment.end)}\n")
-            srt_file.write(f"{segment.text.strip()}\n\n")
+    srt_lines = []
+    for i, segment in enumerate(segments, start=1):
+        srt_lines.append(f"{i}")
+        srt_lines.append(f"{seconds_to_srt_time(segment.start)} --> {seconds_to_srt_time(segment.end)}")
+        srt_lines.append(f"{segment.text.strip()}\n")
+
+    return "\n".join(srt_lines)
 
 
 def seconds_to_srt_time(seconds: float) -> str:
@@ -84,20 +83,17 @@ def srt_time_to_seconds(srt_timestamp: str) -> float:
     return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000
 
 
-def parse_srt_file(srt_path: str) -> list[SRTEntry]:
+def parse_srt_string(srt_content: str) -> list[SRTEntry]:
     """
-    Parses an SRT subtitle file into a list of structured entries.
+    Parses raw SRT content into a list of structured subtitle entries.
 
     Args:
-        srt_path: Path to the .srt file to parse.
+        srt_content: The full content of the .srt file as a string.
 
     Returns:
         A list of subtitle entries, each with index, start time, end time, and text.
     """
-    with open(srt_path, "r", encoding="utf-8") as f:
-        content: str = f.read()
-
-    entries_raw: list[str] = re.split(r"\n\n+", content.strip())
+    entries_raw: list[str] = re.split(r"\n\n+", srt_content.strip())
     entries: list[SRTEntry] = []
 
     for entry_raw in entries_raw:
@@ -110,7 +106,6 @@ def parse_srt_file(srt_path: str) -> list[SRTEntry]:
         text: str = " ".join(lines[2:]).strip()
 
         start_str, end_str = time_range.split(" --> ")
-
         start_sec: float = srt_time_to_seconds(start_str)
         end_sec: float = srt_time_to_seconds(end_str)
 
@@ -127,20 +122,20 @@ def parse_srt_file(srt_path: str) -> list[SRTEntry]:
 
 
 def merge_srt_by_slide_ranges(
-    srt_path: str,
+    srt_content: str,
     slide_timestamps: dict[int, float],
 ) -> str:
     """
     Merge SRT entries into slide-aligned blocks based on slide start timestamps.
 
     Args:
-        srt_path: Path to original .srt file.
+        srt_content: The original SRT content as a string.
         slide_timestamps: Mapping of slide index -> start time (in seconds).
 
     Returns:
         A string in SRT format where entries are grouped by slide time ranges.
     """
-    srt_entries: list[SRTEntry] = parse_srt_file(srt_path)
+    srt_entries: list[SRTEntry] = parse_srt_string(srt_content)
 
     sorted_slide_entries: list[tuple[int, float]] = sorted(slide_timestamps.items(), key=lambda item: item[1])
     video_end_time: float = max(entry["end"] for entry in srt_entries)
@@ -148,12 +143,7 @@ def merge_srt_by_slide_ranges(
     merged_blocks: list[SlideBlock] = []
 
     for i, (slide_index, start_time) in enumerate(sorted_slide_entries):
-        if i + 1 < len(sorted_slide_entries):
-            _, end_time = sorted_slide_entries[i + 1]
-        else:
-            end_time = video_end_time
-
-        # Sanity check to avoid inverted timestamps
+        end_time = sorted_slide_entries[i + 1][1] if i + 1 < len(sorted_slide_entries) else video_end_time
         if end_time <= start_time:
             continue
 
@@ -170,8 +160,13 @@ def merge_srt_by_slide_ranges(
 
     merged_srt_lines: list[str] = []
     for block in merged_blocks:
-        start_str: str = seconds_to_srt_time(block["start"])
-        end_str: str = seconds_to_srt_time(block["end"])
-        merged_srt_lines.extend([str(block["index"]), f"{start_str} --> {end_str}", block["text"], ""])
+        merged_srt_lines.extend(
+            [
+                str(block["index"]),
+                f"{seconds_to_srt_time(block['start'])} --> {seconds_to_srt_time(block['end'])}",
+                block["text"],
+                "",
+            ]
+        )
 
     return "\n".join(merged_srt_lines)
