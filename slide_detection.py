@@ -6,6 +6,7 @@ from video_frame import VideoFrame
 from lecture_slides import LectureSlides
 from slide_tracker import SlideTracker
 
+from pathlib import Path
 from thefuzz import fuzz  # type: ignore
 
 
@@ -41,7 +42,7 @@ def normalize_text(
 
 
 def detect_first_slide(
-    video_file_path: str, keywords_to_be_matched: set[str], max_seconds: int = 30
+    video_file_path: Path, keywords_to_be_matched: set[str], max_seconds: int = 30
 ) -> VideoFrame:
     """
     Scans the beginning of a lecture video to find the first visible slide
@@ -67,7 +68,7 @@ def detect_first_slide(
     max_attempts: int = int(max_seconds * fps)
 
     for video_frame in generate_video_frame(
-        video_path=video_file_path,
+        video_file_path=video_file_path,
         frames_step=1,
     ):
         if video_frame.frame_number >= max_attempts:
@@ -125,8 +126,8 @@ def is_slide_change_detected(
 
 
 def detect_slide_transitions(
-    video_file_path: str,
-    pdf_file_path: str,
+    video_file_path: Path,
+    pdf_file_path: Path,
     keywords_to_be_matched: set[str],
     sampling_interval_seconds: float = 1.0,
 ) -> dict[int, float]:
@@ -161,7 +162,7 @@ def detect_slide_transitions(
 
     slide_changes_seconds: dict[int, float] = {}  # slide_index (1-based): timestamp_seconds
     for video_frame in generate_video_frame(
-        video_path=video_file_path,
+        video_file_path=video_file_path,
         frames_step=frame_steps,
         start_frame_number=first_slide_video_frame.frame_number,
         roi_coordinates=precomputed_roi,

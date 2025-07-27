@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from functools import cached_property
 from PIL import Image
+from pathlib import Path
 
 import numpy as np
 import cv2
-import re
 import pymupdf  # type: ignore
 
 from hashing_utils import compute_phashes
@@ -20,7 +20,7 @@ class LectureSlides:
     match video frames against slide images.
     """
 
-    pdf_path: str
+    pdf_file_path: Path
 
     @cached_property
     def _images(self) -> list[np.ndarray]:
@@ -30,7 +30,7 @@ class LectureSlides:
         Loads each slide (page) of the given PDF, gets the pixel map of it,
         converts it into a Pillow image, and transforms it into an OpenCV-compatible format (BGR `np.ndarray`).
         """
-        pdf_document: pymupdf.Document = pymupdf.open(self.pdf_path)
+        pdf_document: pymupdf.Document = pymupdf.open(self.pdf_file_path)
         images: list[np.ndarray] = []
 
         for i in range(pdf_document.page_count):
@@ -51,7 +51,7 @@ class LectureSlides:
         """
         Extracts raw text from each slide in the PDF.
         """
-        pdf_document = pymupdf.open(self.pdf_path)
+        pdf_document = pymupdf.open(self.pdf_file_path)
         all_text = [page.get_text() for page in pdf_document]
         pdf_document.close()
         return all_text

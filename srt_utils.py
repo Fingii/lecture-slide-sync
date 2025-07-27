@@ -1,8 +1,10 @@
 import re
+import os
+
 from datetime import timedelta
 from typing import TypedDict
 from faster_whisper import WhisperModel  # type: ignore
-import os
+from pathlib import Path
 
 
 class SRTEntry(TypedDict):
@@ -20,7 +22,7 @@ class SlideBlock(TypedDict):
 
 
 def transcribe_video_to_srt(
-    video_path: str,
+    video_file_path: Path,
     model_size: str = "base",
     language: str = "de",
 ) -> str:
@@ -28,12 +30,12 @@ def transcribe_video_to_srt(
     Transcribes a video file to SRT format using faster-whisper.
 
     Args:
-        video_path: Path to the input video file.
+        video_file_path: Path to the input video file.
         model_size: Model variant to use (tiny, base, small, medium, large).
         language: Language code (e.g., "de", "en" etc.).
     """
     whisper_model = WhisperModel(model_size, compute_type="auto", cpu_threads=os.cpu_count())
-    segments, _ = whisper_model.transcribe(audio=video_path, language=language, log_progress=True)
+    segments, _ = whisper_model.transcribe(audio=str(video_file_path), language=language, log_progress=True)
 
     srt_lines = []
     for i, segment in enumerate(segments, start=1):
