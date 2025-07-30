@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
+RUN mkdir -p /app/logs && chmod a+rw /app/logs
+
 COPY *.py .
 
 COPY requirements.txt .

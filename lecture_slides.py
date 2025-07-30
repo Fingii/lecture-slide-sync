@@ -8,6 +8,7 @@ import cv2
 import pymupdf  # type: ignore
 
 from hashing_utils import compute_phashes
+from logs.logging_config import logger
 
 
 @dataclass
@@ -30,6 +31,7 @@ class LectureSlides:
         Loads each slide (page) of the given PDF, gets the pixel map of it,
         converts it into a Pillow image, and transforms it into an OpenCV-compatible format (BGR `np.ndarray`).
         """
+        logger.info("Loading slides from PDF: %s", self.pdf_file_path.name)
         pdf_document: pymupdf.Document = pymupdf.open(self.pdf_file_path)
         images: list[np.ndarray] = []
 
@@ -40,6 +42,7 @@ class LectureSlides:
             images.append(cv2_img)
 
         pdf_document.close()
+        logger.info("Extracted %d slides from PDF", len(images))
         return images
 
     @cached_property
@@ -51,7 +54,9 @@ class LectureSlides:
         """
         Extracts raw text from each slide in the PDF.
         """
+        logger.info("Extracting text from all PDF slides")
         pdf_document = pymupdf.open(self.pdf_file_path)
         all_text = [page.get_text() for page in pdf_document]
         pdf_document.close()
+        logger.info("Successfully extracted text from all %d PDF slides", len(all_text))
         return all_text

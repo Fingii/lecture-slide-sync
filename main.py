@@ -1,4 +1,3 @@
-import os
 import shutil
 import tempfile
 import time
@@ -14,7 +13,9 @@ from fastapi.responses import StreamingResponse
 
 from slide_detection import detect_slide_transitions
 from srt_utils import merge_srt_by_slide_ranges, transcribe_video_to_srt
+from logs.logging_config import configure_loggers, logger
 
+configure_loggers()
 app = FastAPI()
 
 
@@ -237,6 +238,7 @@ async def detect(
         video_path: Path = temp_dir / f"video_{uuid.uuid4()}{Path(video.filename).suffix}"
         pdf_path: Path = temp_dir / f"pdf_{uuid.uuid4()}{Path(pdf.filename).suffix}"
 
+        logger.debug(f"Saving files to temp location: {temp_dir}")
         with video_path.open("wb") as video_file, pdf_path.open("wb") as pdf_file:
             shutil.copyfileobj(video.file, video_file)
             shutil.copyfileobj(pdf.file, pdf_file)
@@ -249,7 +251,7 @@ async def detect(
             sampling_interval_seconds=sampling_interval,
         )
         merged_srt: str = merge_srt_by_slide_ranges(srt_content, slide_changes)
-
+        logger.info("Algorithm finished: Streaming merged SRT file: merged.srt")
         return StreamingResponse(
             BytesIO(merged_srt.encode("utf-8")),
             media_type="text/plain",
@@ -257,6 +259,7 @@ async def detect(
         )
 
     except Exception as e:
+        logger.exception("Error during /detect processing")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -271,16 +274,17 @@ async def batch_detect(
     keywords_set = {k.strip().upper() for k in keywords.split()}
     temp_dir = Path(tempfile.mkdtemp())
 
+    logger.info(f"Starting batch detection for ZIP file: {zipfile_input.filename}")
     try:
         zip_path = temp_dir / f"input_{uuid.uuid4()}.zip"
         with zip_path.open("wb") as f:
             shutil.copyfileobj(zipfile_input.file, f)
-
+        logger.debug(f"Saved ZIP to {zip_path}")
         extract_dir = temp_dir / "extracted"
         extract_dir.mkdir()
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(extract_dir)
-
+        logger.debug(f"Extracted ZIP to {extract_dir}")
         output_dir = temp_dir / "merged"
         output_dir.mkdir()
         durations: list[tuple[str, str | float]] = []
@@ -288,6 +292,7 @@ async def batch_detect(
         for video_path in extract_dir.glob("*.mp4"):
             pdf_path = extract_dir / f"{video_path.stem}.pdf"
             if not pdf_path.exists():
+                logger.warning(f"No matching PDF found for {video_path.name}")
                 continue
 
             start_time = time.time()
@@ -307,6 +312,7 @@ async def batch_detect(
                 durations.append((video_path.name, round(time.time() - start_time, 2)))
 
             except Exception as e:
+                logger.error("Error processing %s: %s", video_path.name, str(e))
                 durations.append((video_path.name, f"Error: {str(e)}"))
 
         # Create results zip
@@ -318,6 +324,7 @@ async def batch_detect(
             timings_content = "\n".join(f"{name}: {time}" for name, time in durations)
             zipf.writestr("timings.txt", timings_content)
 
+        logger.info(f"Batch processing complete. Streaming result zip")
         return StreamingResponse(
             zip_out_path.open("rb"),
             media_type="application/zip",

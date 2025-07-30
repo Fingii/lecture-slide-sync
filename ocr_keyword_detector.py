@@ -1,6 +1,7 @@
 import re
 
 from video_frame import VideoFrame
+from logs.logging_config import logger
 
 
 def _get_matching_keywords(words: set[str], keywords_to_match: set[str]) -> set[str]:
@@ -76,4 +77,11 @@ def are_all_keywords_present(
     valid_words_non_empty: set[str] = {word.strip() for word in valid_words if word.strip()}
     found_keywords: set[str] = _get_matching_keywords(valid_words_non_empty, keywords)
 
+    logger.debug(
+        "Frame %d: OCR match=%s | found=%s | required=%s",
+        video_frame.frame_number,
+        keywords.issubset(found_keywords),
+        found_keywords,
+        keywords,
+    )
     return keywords.issubset(found_keywords)

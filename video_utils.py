@@ -1,5 +1,6 @@
 from typing import Generator
 from video_frame import VideoFrame
+from logs.logging_config import logger
 
 from fractions import Fraction
 from pathlib import Path
@@ -31,19 +32,30 @@ def generate_video_frame(
     Yields:
         VideoFrame objects containing the frame image and its metadata.
     """
+    logger.debug(
+        "Generating frames from %s (start: %d, step: %d)",
+        video_file_path.name,
+        start_frame_number,
+        frames_step,
+    )
     with av.open(video_file_path) as container:
         video_stream: av.video.stream.VideoStream = container.streams.video[0]
         video_stream.thread_type = "AUTO"
 
         if video_stream.average_rate is None:
+            logger.error("Missing average_rate in video stream")
             raise ValueError("video_stream.average_rate is None")
         if video_stream.time_base is None:
+            logger.error("Missing time_base in video stream")
             raise ValueError("video_stream.time_base is None")
 
         # Convert frame index to pts
         start_frame_second: float = start_frame_number / float(video_stream.average_rate)
         start_frame_pts: int = int(start_frame_second / float(video_stream.time_base))
 
+        logger.debug(
+            "Seeking to frame %d (%.2fs, pts=%d)", start_frame_number, start_frame_second, start_frame_pts
+        )
         container.seek(
             offset=start_frame_pts,
             backward=True,
@@ -91,11 +103,14 @@ def get_video_fps(video_file_path: Path) -> float:  # type: ignore
     Raises:
         ValueError: If the video stream does not contain average_rate metadata.
     """
+    logger.debug("Getting FPS from video: %s", video_file_path.name)
     with av.open(video_file_path) as container:
         video_stream: av.video.stream.VideoStream = container.streams.video[0]
         average_rate: Fraction | None = video_stream.average_rate
 
         if average_rate is None:
+            logger.error("Missing average_rate in video: %s", video_file_path.name)
             raise ValueError("Video stream has no average_rate metadata.")
         fps = float(average_rate)
+        logger.debug("Detected FPS: %.2f", fps)
         return fps

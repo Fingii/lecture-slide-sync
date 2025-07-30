@@ -6,6 +6,8 @@ from typing import TypedDict
 from faster_whisper import WhisperModel  # type: ignore
 from pathlib import Path
 
+from logs.logging_config import logger
+
 
 class SRTEntry(TypedDict):
     index: int
@@ -34,8 +36,14 @@ def transcribe_video_to_srt(
         model_size: Model variant to use (tiny, base, small, medium, large).
         language: Language code (e.g., "de", "en" etc.).
     """
+    import logging
+
+    logging.getLogger("faster_whisper.transcribe").setLevel(logging.WARNING)
+    logger.info("Transcribing: %s with model: %s", video_file_path.name, model_size)
     whisper_model = WhisperModel(model_size, compute_type="auto", cpu_threads=os.cpu_count())
-    segments, _ = whisper_model.transcribe(audio=str(video_file_path), language=language, log_progress=True)
+    segments, info = whisper_model.transcribe(
+        audio=str(video_file_path), language=language, log_progress=True
+    )
 
     srt_lines = []
     for i, segment in enumerate(segments, start=1):
@@ -43,6 +51,7 @@ def transcribe_video_to_srt(
         srt_lines.append(f"{seconds_to_srt_time(segment.start)} --> {seconds_to_srt_time(segment.end)}")
         srt_lines.append(f"{segment.text.strip()}\n")
 
+    logger.info("Transcription complete: %d segments", len(srt_lines))
     return "\n".join(srt_lines)
 
 
@@ -137,6 +146,7 @@ def merge_srt_by_slide_ranges(
     Returns:
         A string in SRT format where entries are grouped by slide time ranges.
     """
+    logger.info("Merging SRT file with %d slide timestamps", len(slide_timestamps))
     srt_entries: list[SRTEntry] = parse_srt_string(srt_content)
 
     sorted_slide_entries: list[tuple[int, float]] = sorted(slide_timestamps.items(), key=lambda item: item[1])
@@ -171,4 +181,5 @@ def merge_srt_by_slide_ranges(
             ]
         )
 
+    logger.info("Created %d merged slide blocks from %d SRT entries", len(merged_blocks), len(srt_entries))
     return "\n".join(merged_srt_lines)
