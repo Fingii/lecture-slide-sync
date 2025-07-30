@@ -7,7 +7,7 @@ import numpy as np
 import cv2
 import pymupdf  # type: ignore
 
-from hashing_utils import compute_phashes
+from app.core.hashing_utils import compute_phashes
 from logs.logging_config import logger
 
 

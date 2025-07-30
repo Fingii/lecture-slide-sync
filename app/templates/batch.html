@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+    <html>
+    <head>
+        <title>Batch Slide Detection</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                max-width: 600px;
+                margin: 40px auto;
+                padding: 20px;
+                background: #f4f4f4;
+                border-radius: 8px;
+            }
+            input[type="file"], input[type="text"], input[type="number"] {
+                width: 100%;
+                margin-bottom: 15px;
+            }
+            button {
+                padding: 10px 20px;
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            #status {
+                margin-top: 20px;
+                background-color: #e2e2e2;
+                padding: 10px;
+                border-radius: 4px;
+                white-space: pre-wrap;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Batch Slide Detection</h2>
+        <form id="batchForm">
+            <label>Upload ZIP (mp4, pdf pair):</label>
+            <input type="file" name="zipfile_input" accept=".zip" required><br>
+
+            <label>Keywords (space separated):</label>
+            <input type="text" name="keywords" value="FH AACHEN UNIVERSITY OF APPLIED SCIENCES" required><br>
+
+            <label>Sampling interval (seconds):</label>
+            <input type="number" name="sampling_interval" value="1.0" step="0.1" min="0.1" required><br>
+
+            <button type="submit">Upload & Process</button>
+        </form>
+
+        <div id="status">Waiting for ZIP upload...</div>
+
+        <script>
+            const form = document.getElementById("batchForm");
+            const status = document.getElementById("status");
+
+            form.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                status.innerText = "Uploading and processing... ⏳";
+
+                const formData = new FormData(form);
+                try {
+                    const res = await fetch("/batch-detect", {
+                        method: "POST",
+                        body: formData
+                    });
+
+                    if (!res.ok) {
+                        throw new Error("Server error");
+                    }
+
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = "results.zip";
+                    link.click();
+                    status.innerText = "Download ready: results.zip";
+                } catch (err) {
+                    status.innerText = "Error: " + err.message;
+                }
+            });
+        </script>
+    </body>
+    </html>
+    """
