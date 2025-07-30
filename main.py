@@ -171,7 +171,7 @@ def batch_form():
     <body>
         <h2>Batch Slide Detection</h2>
         <form id="batchForm">
-            <label>Upload ZIP (mp4, pdf, srt triplets):</label>
+            <label>Upload ZIP (mp4, pdf pair):</label>
             <input type="file" name="zipfile_input" accept=".zip" required><br>
 
             <label>Keywords (space separated):</label>
