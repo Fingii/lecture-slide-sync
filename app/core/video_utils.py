@@ -1,5 +1,5 @@
 from typing import Generator
-from video_frame import VideoFrame
+from app.models.video_frame import VideoFrame
 from logs.logging_config import logger
 
 from fractions import Fraction

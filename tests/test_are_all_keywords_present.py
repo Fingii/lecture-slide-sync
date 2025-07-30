@@ -1,8 +1,8 @@
 import cv2
 from pathlib import Path
 import numpy as np
-from ocr_keyword_detector import are_all_keywords_present
-from video_frame import VideoFrame
+from app.core.ocr_keyword_detector import are_all_keywords_present
+from app.models.video_frame import VideoFrame
 
 keywords_to_be_matched: set[str] = {"UNIVERSITY", "FH", "AACHEN", "OF", "APPLIED", "SCIENCES"}
 

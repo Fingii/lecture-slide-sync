@@ -1,13 +1,12 @@
 from dataclasses import dataclass
 from functools import cached_property
-import re
 
 import cv2
 import numpy as np
 from pytesseract import pytesseract  # type: ignore
 
-from hashing_utils import compute_phash
-from image_utils import add_black_border
+from app.core.hashing_utils import compute_phash
+from app.core.image_utils import add_black_border
 from logs.logging_config import logger
 
 
@@ -155,7 +154,7 @@ class VideoFrame:
         Returns:
             A string composed only of words with OCR confidence >= 80.
         """
-        from ocr_keyword_detector import filter_words_by_confidence
+        from app.core.ocr_keyword_detector import filter_words_by_confidence
 
         confident_words: set[str] = filter_words_by_confidence(
             self.ocr_data_roi_frame, confidence_threshold=80

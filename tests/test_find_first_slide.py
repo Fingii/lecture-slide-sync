@@ -3,8 +3,8 @@ import pytest
 import numpy as np
 import json
 from pathlib import Path
-from slide_detection import detect_first_slide
-from video_frame import VideoFrame
+from app.core.slide_detection import detect_first_slide
+from app.models.video_frame import VideoFrame
 
 TEST_DATA_ROOT = Path(__file__).parent / "test_data"
 FRAME_COUNTS_FILE = TEST_DATA_ROOT / "test_find_first_slide" / "frame_counts.json"

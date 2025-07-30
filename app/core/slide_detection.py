@@ -1,10 +1,10 @@
 import re
 
-from video_utils import generate_video_frame, get_video_fps
-from ocr_keyword_detector import are_all_keywords_present
-from video_frame import VideoFrame
-from lecture_slides import LectureSlides
-from slide_tracker import SlideTracker
+from app.core.video_utils import generate_video_frame, get_video_fps
+from app.core.ocr_keyword_detector import are_all_keywords_present
+from app.models.video_frame import VideoFrame
+from app.models.lecture_slides import LectureSlides
+from app.models.slide_tracker import SlideTracker
 from logs.logging_config import logger
 
 from pathlib import Path
