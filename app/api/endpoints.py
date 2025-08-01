@@ -22,12 +22,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/", response_class=HTMLResponse)
 def form(request: Request):
-    return templates.TemplateResponse("detect.html", {"request": request})
-
-
-@router.get("/batch", response_class=HTMLResponse)
-def batch_form(request: Request):
-    return templates.TemplateResponse("batch.html", {"request": request})
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 @router.post("/detect")

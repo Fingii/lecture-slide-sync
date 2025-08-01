@@ -1,0 +1,234 @@
+/* General Styles */
+.info-icon {
+    cursor: help;
+    color: #0d6efd;
+}
+
+/* Step Cards */
+.step-card {
+    margin-bottom: 1.5rem;
+    border-left: 4px solid #0d6efd;
+}
+
+.step-card .card-header {
+    background-color: rgba(13, 110, 253, 0.03);
+}
+
+/* Upload Area */
+.upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 5px;
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    background: #f8f9fa;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.upload-area.active {
+    border-color: #0d6efd;
+    background: #e7f1ff;
+}
+
+.upload-area i {
+    font-size: 2.5rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+}
+
+/* Step Indicator */
+.step-indicator {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.step {
+    text-align: center;
+    position: relative;
+    z-index: 2;
+    flex: 1;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.5rem;
+    font-weight: bold;
+}
+
+.step.active .step-number {
+    background: #0d6efd;
+    color: white;
+}
+
+.step.completed .step-number {
+    background: #198754;
+    color: white;
+}
+
+.step-line {
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #e9ecef;
+    z-index: 1;
+}
+
+.step-line-progress {
+    position: absolute;
+    top: 20px;
+    left: 0;
+    height: 2px;
+    background: #0d6efd;
+    z-index: 1;
+    transition: width 0.3s;
+}
+
+/* Step Content */
+.step-content {
+    display: none;
+}
+
+.step-content.active {
+    display: block;
+}
+
+
+/* Parameter Info Cards */
+.parameter-info {
+    border-left: 3px solid #6f42c1;
+    height: 100%;
+}
+
+.parameter-info h5 {
+    color: #6f42c1;
+}
+
+.parameter-info .card-body {
+    padding: 1.25rem;
+}
+
+.feature-card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    background: #f8f9fa;
+    transition: all 0.2s;
+}
+
+.feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .step-title {
+        font-size: 0.8rem;
+    }
+    .step-number {
+        width: 30px;
+        height: 30px;
+        font-size: 0.9rem;
+    }
+    .step-line, .step-line-progress {
+        top: 15px;
+    }
+    .parameter-info {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Accordion Styles */
+.accordion-button:not(.collapsed) {
+    background-color: rgba(13, 110, 253, 0.1);
+    color: #0d6efd;
+}
+
+/* Tooltip Styles */
+.tooltip-inner {
+    max-width: 300px;
+    padding: 0.5rem 1rem;
+}
+.info-tooltip {
+    cursor: help;
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+}
+
+.info-tooltip .bi {
+    color: #0d6efd;
+    font-size: 0.9em;
+    transition: all 0.2s;
+}
+
+.info-tooltip:hover .bi {
+    transform: scale(1.1);
+}
+
+.bs-tooltip-auto[data-popper-placement^=top] .tooltip-arrow::before,
+.bs-tooltip-top .tooltip-arrow::before {
+    border-top-color: #0d6efd;
+}
+/* Usage options */
+.usage-option {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    background: #f8fafc;
+    transition: all 0.2s;
+}
+
+.usage-option:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+}
+
+.usage-option ol {
+    padding-left: 1.5rem;
+}
+
+.usage-option ol li {
+    padding-left: 0.5rem;
+}
+
+@media (max-width: 767.98px) {
+    .usage-option {
+        margin-bottom: 1rem;
+    }
+}
+/* Keyword Tags */
+.keyword-tag {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+    display: inline-flex;
+    align-items: center;
+}
+
+.keyword-tag .btn-close {
+    font-size: 0.6rem;
+    padding: 0.25rem;
+}
+
+/* Range Input Styling */
+input[type="range"]::-webkit-slider-thumb {
+    background: #0d6efd;
+}
+
+input[type="range"]::-moz-range-thumb {
+    background: #0d6efd;
+}
+
+/* Form Labels */
+.form-label {
+    font-weight: 500;
+}
