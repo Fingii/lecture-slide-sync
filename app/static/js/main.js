@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Validate the file combination
         if (zipFile && fileArray.length === 1) {
             processingMode = 'batch';
-        } else if (videoFile || pdfFile) {
+        } else if (videoFile && pdfFile) {
             processingMode = 'single';
         } else {
             alert('Please upload either:\n- A video file\n- A PDF file\n- Or both together\n- Or a single ZIP file');
@@ -290,10 +290,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const endpoint = processingMode === 'single' ? '/detect' : '/batch-detect';
 
             if (processingMode === 'single') {
-                formData.append('video', videoFile);
-                formData.append('pdf', pdfFile);
+                formData.append('uploaded_video', videoFile);
+                formData.append('uploaded_pdf', pdfFile);
             } else {
-                formData.append('zipfile_input', zipFile);
+                formData.append('uploaded_zip', zipFile);
             }
 
             const response = await fetch(endpoint, {

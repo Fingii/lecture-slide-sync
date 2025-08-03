@@ -8,9 +8,12 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /auto-slide-tracker
 
-RUN mkdir -p logs && chmod a+rw logs
+RUN mkdir -p logs media && chmod a+rw logs media
 
-COPY . .
+COPY app ./app
+COPY logs/logging_config.json logs/
+COPY logs/logging_config.py logs/
+COPY requirements.txt .
 
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
