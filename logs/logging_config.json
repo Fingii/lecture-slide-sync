@@ -48,10 +48,10 @@
             "level": "INFO",
             "propagate": true
         },
-        "uvicorn": {
+        "hypercorn": {
             "handlers": ["fastapi_file"],
             "level": "DEBUG",
-            "propagate": true
+            "propagate": false
         }
     }
 }
