@@ -9,10 +9,12 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from app.core.file_utils import (
-    save_file,
     find_matching_video_pdf_pairs,
-    create_zip_from_content,
     extract_zip,
+    save_upload_to_file,
+    copy_file,
+    save_str_to_file,
+    zipping_directory,
 )
 from app.core.processing import generate_merged_srt
 from logs.logging_config import logger
@@ -42,8 +44,8 @@ async def detect(
 
         try:
             keywords_set: set[str] = {k.strip().upper() for k in keywords.split()}
-            uploaded_video_path: Path = save_file(uploaded_video, MEDIA_FOLDER)  # permanent
-            uploaded_pdf_path: Path = save_file(uploaded_pdf, tmp_dir)  # temporary
+            uploaded_video_path: Path = save_upload_to_file(uploaded_video, MEDIA_FOLDER)  # permanent
+            uploaded_pdf_path: Path = save_upload_to_file(uploaded_pdf, tmp_dir)  # temporary
 
             merged_srt: str = generate_merged_srt(
                 video_file_path=uploaded_video_path,
@@ -52,12 +54,12 @@ async def detect(
                 sampling_interval_seconds=sampling_interval,
             )
 
-            logger.info(f"Detection done: Streaming merged SRT file: {uploaded_video_path.name}_merged.srt")
+            logger.info(f"Detection done: Streaming merged SRT file: {uploaded_video_path.stem}_merged.srt")
             return StreamingResponse(
                 BytesIO(merged_srt.encode("utf-8")),
                 media_type="text/plain",
                 headers={
-                    "Content-Disposition": f"attachment; filename={uploaded_video_path.name}_merged.srt"
+                    "Content-Disposition": f"attachment; filename={uploaded_video_path.stem}_merged.srt"
                 },
             )
 
@@ -72,18 +74,18 @@ async def batch_detect(
     keywords: Annotated[str, Form()] = "FH AACHEN UNIVERSITY OF APPLIED SCIENCES",
     sampling_interval: Annotated[float, Form()] = 1.0,
 ):
-
+    logger.info(f"Starting batch detection for ZIP file: {uploaded_zip.filename}")
     with tempfile.TemporaryDirectory() as tmp_dir_str:
         tmp_dir: Path = Path(tmp_dir_str)
-        logger.info(f"Starting batch detection for ZIP file: {uploaded_zip.filename}")
 
         try:
             keywords_set: set[str] = {k.strip().upper() for k in keywords.split()}
-            zip_path: Path = save_file(uploaded_zip, tmp_dir)
+            zip_path: Path = save_upload_to_file(uploaded_zip, tmp_dir)
             extracted_zip_dir: Path = extract_zip(zip_path)
 
             video_pdf_pairs: list[tuple[Path, Path]] = find_matching_video_pdf_pairs(extracted_zip_dir)
-            srt_contents: dict[str, str] = {}  # {filename: content}
+            results_dir_path: Path = tmp_dir / "results"
+            results_dir_path.mkdir()
 
             for video_path, pdf_path in video_pdf_pairs:
                 try:
@@ -94,20 +96,18 @@ async def batch_detect(
                         sampling_interval_seconds=sampling_interval,
                     )
 
-                    save_file(video_path, MEDIA_FOLDER)
-                    filename: str = video_path.stem
-                    srt_contents[f"{filename}_merged.srt"] = merged_srt
-
+                    copy_file(video_path, MEDIA_FOLDER)
+                    srt_filename: str = f"{video_path.stem}_merged.srt"
+                    save_str_to_file(merged_srt, results_dir_path / srt_filename)
                 except Exception as e:
                     logger.error("Error processing %s: %s", video_path.name, str(e))
 
-            zip_result = create_zip_from_content(srt_contents)
-
+            result_zip_path: Path = zipping_directory(results_dir_path)
             logger.info(f"Batch processing complete. Streaming result zip")
             return StreamingResponse(
-                zip_result,
+                BytesIO(result_zip_path.read_bytes()),
                 media_type="application/zip",
-                headers={"Content-Disposition": "attachment; filename=results.zip"},
+                headers={"Content-Disposition": "attachment; filename=batch_results.zip"},
             )
 
         except Exception as e:

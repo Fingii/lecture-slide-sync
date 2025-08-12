@@ -2,55 +2,103 @@ import shutil
 import zipfile
 import starlette.datastructures
 
-from typing import Any
 from fastapi import UploadFile
-from io import BytesIO
 from pathlib import Path
 from logs.logging_config import logger
 
 
-def save_file(source: UploadFile | Path, target_dir: Path) -> Path:
+def save_upload_to_file(upload_file: UploadFile, target_dir: Path) -> Path:
     """
-    Save either an UploadFile or existing Path to target directory with detailed logging.
-    Returns path to saved file.
+    Save an uploaded file to target directory.
 
     Args:
-        source: Either an UploadFile or existing Path object
+        upload_file: FastAPI UploadFile object
         target_dir: Target directory to save the file
 
     Returns:
-        Path: Path to the saved file
+        Path to the saved file
 
     Raises:
-        ValueError: For invalid UploadFile with no filename
-        Exception: For any file operation errors
+        ValueError: If upload_file has no filename
+        RuntimeError: If save operation fails
     """
+    if not upload_file.filename:
+        logger.error("UploadFile provided with no filename")
+        raise ValueError("UploadFile must have a filename")
 
-    logger.debug(f"Saving file. Type: {type(source)}, Target dir: {target_dir}")
+    logger.debug(f"Saving uploaded file: {upload_file.filename}, Target dir: {target_dir}")
+
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_path: Path = target_dir / upload_file.filename
 
     try:
-        target_dir.mkdir(parents=True, exist_ok=True)
+        with target_path.open("wb") as buffer:
+            shutil.copyfileobj(upload_file.file, buffer)
+        logger.debug(f"Successfully saved upload {upload_file.filename} to {target_dir}")
+        return target_path
+    except Exception as e:
+        logger.error(f"Failed to save upload: {str(e)}", exc_info=True)
+        raise RuntimeError(f"Upload save operation failed: {str(e)}") from e
 
-        if isinstance(source, starlette.datastructures.UploadFile):
-            if not source.filename:
-                logger.error("UploadFile provided with no filename")
-                raise ValueError("UploadFile must have a filename")
 
-            target_path = target_dir / source.filename
-            with target_path.open("wb") as buffer:
-                shutil.copyfileobj(source.file, buffer)
-                logger.debug(f"Successfully saved {source.filename} to {target_dir}")
-                return target_path
+def save_str_to_file(content: str, target_path: Path, encoding: str = "utf-8") -> Path:
+    """
+    Save text content to a file.
 
-        elif isinstance(source, Path):
-            target_path = target_dir / source.name
-            shutil.copy2(source, target_path)
-            logger.debug(f"Successfully saved {source.name} to {target_dir}")
-            return target_path
+    Args:
+        content: String content to save
+        target_path: Full path including filename with extension
+        encoding: Text encoding to use
+
+    Returns:
+        Path to saved file
+
+    Raises:
+        RuntimeError: If save operation fails
+    """
+    try:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with target_path.open("w", encoding=encoding) as f:
+            f.write(content)
+
+        logger.debug(f"Saved text content to {target_path}")
+        return target_path
 
     except Exception as e:
-        logger.error(f"Failed to save file: {str(e)}", exc_info=True)
-        raise RuntimeError(f"File save operation failed: {str(e)}") from e
+        logger.error(f"Failed to save text file: {str(e)}", exc_info=True)
+        raise RuntimeError(f"Text save failed: {str(e)}") from e
+
+
+def copy_file(source_path: Path, target_dir: Path) -> Path:
+    """
+    Copy an existing file to target directory.
+
+    Args:
+        source_path: Path to existing file
+        target_dir: Target directory to copy the file
+
+    Returns:
+        Path to the copied file
+
+    Raises:
+        FileNotFoundError: If source file doesn't exist
+        RuntimeError: If copy operation fails
+    """
+    if not source_path.exists():
+        logger.error(f"Source file not found: {source_path}")
+        raise FileNotFoundError(f"Source file not found: {source_path}")
+
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_path: Path = target_dir / source_path.name
+
+    try:
+        shutil.copy2(source_path, target_path)
+        logger.debug(f"Successfully copied {source_path.name} to {target_dir}")
+        return target_path
+    except Exception as e:
+        logger.error(f"Failed to copy file: {str(e)}", exc_info=True)
+        raise RuntimeError(f"File copy operation failed: {str(e)}") from e
 
 
 def find_matching_video_pdf_pairs(directory: Path) -> list[tuple[Path, Path]]:
@@ -111,29 +159,46 @@ def extract_zip(zip_path: Path, extract_to: Path | None = None) -> Path:
         raise RuntimeError(f"ZIP extraction failed: {str(e)}") from e
 
 
-def create_zip_from_content(content: dict[str, Any]) -> BytesIO:
+def zipping_directory(source_dir: Path, output_zip_path: Path | None = None) -> Path:
     """
-    Create a ZIP file in memory from dictionary content.
+    Create a ZIP file from all files in a directory.
 
     Args:
-        content: Dictionary of {filename: content} where content can be str or bytes
+        source_dir: Directory containing files to zip
+        output_zip_path: Where to save the ZIP file. Defaults to source_dir's parent
 
     Returns:
-        BytesIO buffer containing the ZIP file
+        Path to the created ZIP file
 
     Raises:
-        ValueError: If content is empty
+        FileNotFoundError: If source directory doesn't exist
+        ValueError: If source directory is empty
+        RuntimeError: If ZIP creation fails
     """
-    if not content:
-        raise ValueError("No content provided to create ZIP")
+    if not source_dir.exists():
+        raise FileNotFoundError(f"Source directory not found: {source_dir}")
 
-    zip_buffer = BytesIO()
+    files_to_zip: list[Path] = list(source_dir.rglob("*"))
+    files_to_zip = [f for f in files_to_zip if f.is_file()]
 
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
-        for filename, file_content in content.items():
-            if isinstance(file_content, str):
-                file_content = file_content.encode("utf-8")
-            zipf.writestr(filename, file_content)
+    if not files_to_zip:
+        raise ValueError(f"No files found in directory: {source_dir}")
 
-    zip_buffer.seek(0)
-    return zip_buffer
+    if output_zip_path is None:
+        output_zip_path = source_dir.parent / f"{source_dir.name}.zip"
+
+    output_zip_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        with zipfile.ZipFile(output_zip_path, "w") as zipf:
+            for file_path in files_to_zip:
+                arcname = file_path.relative_to(source_dir)
+                zipf.write(file_path, arcname)
+                logger.debug(f"Added {file_path.name} to ZIP")
+
+        logger.info(f"Created ZIP with {len(files_to_zip)} files: {output_zip_path}")
+        return output_zip_path
+
+    except Exception as e:
+        logger.error(f"Failed to create ZIP from directory: {str(e)}", exc_info=True)
+        raise RuntimeError(f"ZIP creation failed: {str(e)}") from e
