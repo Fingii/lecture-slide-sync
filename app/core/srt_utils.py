@@ -1,9 +1,8 @@
 import re
-import os
 
 from datetime import timedelta
 from typing import TypedDict
-from faster_whisper import WhisperModel  # type: ignore
+from faster_whisper import WhisperModel, BatchedInferencePipeline  # type: ignore
 from pathlib import Path
 
 from logs.logging_config import logger
@@ -26,24 +25,23 @@ class SlideBlock(TypedDict):
 def transcribe_video_to_srt(
     video_file_path: Path,
     model_size: str = "base",
-    language: str = "de",
 ) -> str:
     """
-    Transcribes a video file to SRT format using faster-whisper.
+    Transcribes a video file to SRT format using faster-whisper with batched inference.
 
     Args:
         video_file_path: Path to the input video file.
         model_size: Model variant to use (tiny, base, small, medium, large).
-        language: Language code (e.g., "de", "en" etc.).
     """
     import logging
 
-    logging.getLogger("faster_whisper.transcribe").setLevel(logging.WARNING)
+    logging.getLogger("faster_whisper.transcribe").setLevel(logging.INFO)
     logger.info("Transcribing: %s with model: %s", video_file_path.name, model_size)
-    whisper_model = WhisperModel(model_size, compute_type="auto", cpu_threads=os.cpu_count())
-    segments, info = whisper_model.transcribe(
-        audio=str(video_file_path), language=language, log_progress=True
-    )
+
+    whisper_model = WhisperModel(model_size, device="cpu", compute_type="auto")
+    pipeline = BatchedInferencePipeline(whisper_model)
+
+    segments, _ = pipeline.transcribe(audio=str(video_file_path), batch_size=8, log_progress=True)
 
     srt_lines = []
     for i, segment in enumerate(segments, start=1):
