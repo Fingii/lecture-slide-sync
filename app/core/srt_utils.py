@@ -22,12 +22,21 @@ class SlideBlock(TypedDict):
     text: str
 
 
+ROOT_DIR = Path(__file__).resolve().parents[2]
+
+
 def transcribe_video_to_srt(
     video_file_path: Path,
     model_size: str = "base",
 ) -> str:
     """
     Transcribes a video file to SRT format using faster-whisper with batched inference.
+
+    Notes:
+    - Models are not downloaded at runtime. We load a local CTranslate2 model
+    (https://huggingface.co/collections/Systran/faster-whisper-6867ecec0e757ee14896e2d3)
+    from: ``ROOT_DIR / "faster-whisper-models" / <model_size>``.
+    Example: "base" -> ROOT_DIR/faster-whisper-models/base
 
     Args:
         video_file_path: Path to the input video file.
@@ -37,8 +46,11 @@ def transcribe_video_to_srt(
 
     logging.getLogger("faster_whisper.transcribe").setLevel(logging.INFO)
     logger.info("Transcribing: %s with model: %s", video_file_path.name, model_size)
-
-    whisper_model = WhisperModel(model_size, device="cpu", compute_type="auto")
+    model_dir = ROOT_DIR / "faster-whisper-models" / f"{model_size}"
+    if not model_dir.exists():
+        logger.error(f"Local faster-whisper model not found: {model_dir}")
+        raise FileNotFoundError(f"Local faster-whisper model not found: {model_dir}")
+    whisper_model = WhisperModel(str(model_dir), device="cpu", compute_type="int8")
     pipeline = BatchedInferencePipeline(whisper_model)
 
     segments, _ = pipeline.transcribe(audio=str(video_file_path), batch_size=8, log_progress=True)
