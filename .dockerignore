@@ -25,3 +25,6 @@ temp_*
 # Don't copy project metadata
 README.md
 Dockerfile
+
+# Use host-mounted models, don’t include in image
+faster-whisper-models/
