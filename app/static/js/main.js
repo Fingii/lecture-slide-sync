@@ -253,6 +253,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('reviewKeywords').textContent = document.getElementById('keywords').value;
         document.getElementById('reviewInterval').textContent =
             `${document.getElementById('samplingInterval').value} seconds`;
+          const chaptersOn = document.getElementById('generateChapters').checked;
+          document.getElementById('reviewChapters').innerHTML = chaptersOn
+            ? '<span class="badge bg-success">On</span> — MP4 with chapter markers'
+            : '<span class="badge bg-secondary">Off</span> - SRT only';
         goToStep(3);
     });
 
@@ -286,6 +290,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const formData = new FormData();
             formData.append('keywords', document.getElementById('keywords').value);
             formData.append('sampling_interval', document.getElementById('samplingInterval').value);
+            formData.append('generate_chapters', document.getElementById('generateChapters').checked ? 'true' : 'false');
 
             const endpoint = processingMode === 'single' ? '/detect' : '/batch-detect';
 
@@ -305,7 +310,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             clearInterval(processingInterval);
             document.getElementById('processingBar').style.width = '100%';
-            document.getElementById('processingStatus').textContent = 'Processing complete!';
+            document.getElementById('processingStatus').textContent = 'Processing complete! Streaming result, this may take a while';
 
             const contentDisposition = response.headers.get('Content-Disposition');
             const filename = contentDisposition

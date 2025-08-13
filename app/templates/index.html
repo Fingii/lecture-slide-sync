@@ -80,6 +80,19 @@
                                     <p class="small text-muted mb-0">Supports both single lectures and batch ZIP processing</p>
                                   </div>
                                 </div>
+
+                                <div class="d-flex mt-3">
+                                  <div class="me-3 text-warning">
+                                    <i class="bi bi-bookmark-check fs-4"></i>
+                                  </div>
+                                  <div>
+                                    <h6 class="mb-1">Video with Chapters</h6>
+                                    <p class="small text-muted mb-0">
+                                      Optionally export an <code>.mp4</code> with chapter markers for each detected slide.
+                                    </p>
+                                  </div>
+                                </div>
+
                               </div>
                             </div>
                           </div>
@@ -256,7 +269,6 @@
                         <div class="step-content" id="step2-content">
                             <h3 class="mb-4">Configure Processing</h3>
 
-                            <!-- Sampling Interval -->
                             <div class="card mb-4">
                                 <div class="card-header">
                                     <h5 class="mb-0 d-flex align-items-center">
@@ -277,8 +289,17 @@
                                             <span class="input-group-text">seconds</span>
                                         </div>
                                         <div class="form-text">
-                                            <small>Recommended: 0.1-5 seconds. Default: <span>1.0</span>s</small>
+                                            <small>Recommended: 0.1-5 seconds. Default: <span id="intervalValue">1.0</span>s</small>
                                         </div>
+                                    </div>
+
+                                    <div class="mb-3 form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="generateChapters" checked>
+                                        <label class="form-check-label" for="generateChapters">
+                                            Generate Video Chapters
+                                            <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip"
+                                               title="Creates chapter markers in the output video at each slide change"></i>
+                                        </label>
                                     </div>
 
                                     <div class="mb-3">
@@ -328,6 +349,10 @@
                                     <div>
                                         <strong>Sampling Interval:</strong>
                                         <div id="reviewInterval" class="text-muted"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                      <strong>Video Chapters:</strong>
+                                      <div id="reviewChapters" class="text-muted"></div>
                                     </div>
                                     <div class="mb-3">
                                         <strong>Keywords:</strong>
@@ -391,6 +416,7 @@
                 </a>
             </div>
         </div>
+    </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
