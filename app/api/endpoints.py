@@ -1,4 +1,4 @@
-import os
+import uuid
 import tempfile
 from pathlib import Path
 from typing import Annotated
@@ -66,7 +66,7 @@ async def detect(
                 keywords_to_be_matched=keywords_set,
                 sampling_interval_seconds=sampling_interval,
             )
-            srt_filename: str = f"{uploaded_video_path.stem}_merged.srt"
+            srt_filename: str = f"{uploaded_video_path.stem}_merged_{uuid.uuid4()}.srt"
             tmp_merged_srt_path: Path = save_str_to_file(merged_srt, results_dir_path / srt_filename)
 
             if generate_chapters:
@@ -76,7 +76,7 @@ async def detect(
                     output_dir=results_dir_path,
                 )
                 # Save zip in MEDIA_FOLDER for convenience, will be deleted after sending
-                final_path = zipping_directory(results_dir_path, MEDIA_FOLDER / "results.zip")
+                final_path = zipping_directory(results_dir_path, MEDIA_FOLDER / f"results_{uuid.uuid4()}.zip")
             else:
                 # Save SRT in MEDIA_FOLDER for convenience, will be deleted after sending
                 final_path = copy_file(tmp_merged_srt_path, MEDIA_FOLDER)
@@ -104,7 +104,7 @@ async def batch_detect(
     generate_chapters: bool = Form(False),
 ):
     logger.info(f"Starting batch detection for ZIP file: {uploaded_zip.filename}")
-    # See NOTE in /detect: we persist final artifact to MEDIA_FOLDR (stable path)
+    # See NOTE in /detect: we persist final artifact to MEDIA_FOLDER (stable path)
     # and delete it after send; tmp dir is only for intermediates.
     with tempfile.TemporaryDirectory() as tmp_dir_str:
         tmp_dir: Path = Path(tmp_dir_str)
@@ -142,7 +142,9 @@ async def batch_detect(
                     logger.error("Error processing %s: %s", video_path.name, str(e))
 
             # Save zip in MEDIA_FOLDER for convenience, will be deleted after sending
-            final_path = zipping_directory(results_dir_path, MEDIA_FOLDER / "batch_results.zip")
+            final_path = zipping_directory(
+                results_dir_path, MEDIA_FOLDER / f"batch_results_{uuid.uuid4()}.zip"
+            )
             logger.info(f"Batch processing complete. Streaming result zip")
             return FileResponse(
                 path=final_path,
