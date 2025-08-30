@@ -66,8 +66,8 @@ async def detect(
                 keywords_to_be_matched=keywords_set,
                 sampling_interval_seconds=sampling_interval,
             )
-            srt_filename: str = f"{uploaded_video_path.stem}_merged_{uuid.uuid4()}.srt"
-            tmp_merged_srt_path: Path = save_str_to_file(merged_srt, results_dir_path / srt_filename)
+            clean_srt_name = f"{uploaded_video_path.stem}_merged.srt"
+            save_str_to_file(merged_srt, results_dir_path / clean_srt_name)
 
             if generate_chapters:
                 generate_video_with_chapters(
@@ -78,8 +78,10 @@ async def detect(
                 # Save zip in MEDIA_FOLDER for convenience, will be deleted after sending
                 final_path = zipping_directory(results_dir_path, MEDIA_FOLDER / f"results_{uuid.uuid4()}.zip")
             else:
+                # Safe under concurrency
+                unique_media_srt = MEDIA_FOLDER / f"{uploaded_video_path.stem}_merged_{uuid.uuid4()}.srt"
                 # Save SRT in MEDIA_FOLDER for convenience, will be deleted after sending
-                final_path = copy_file(tmp_merged_srt_path, MEDIA_FOLDER)
+                final_path = save_str_to_file(merged_srt, unique_media_srt)
 
             filename: str = "result.zip" if generate_chapters else f"{uploaded_video_path.stem}_merged.srt"
             logger.info(f"Detection done: Streaming {filename}")
