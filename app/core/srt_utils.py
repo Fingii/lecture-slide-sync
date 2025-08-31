@@ -5,6 +5,7 @@ from datetime import timedelta
 from typing import TypedDict
 from faster_whisper import WhisperModel, BatchedInferencePipeline  # type: ignore
 from pathlib import Path
+from huggingface_hub import snapshot_download
 
 from logs.logging_config import logger
 
@@ -24,6 +25,36 @@ class SlideBlock(TypedDict):
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
+
+
+def _ensure_model_dir(model_size: str) -> Path:
+    """
+    Return the local dir for `model_size`.
+    - If WHISPER_MOUNTED=true (default): require the dir to exist (volume mount).
+    - If WHISPER_MOUNTED=false: create dirs and download the model if missing.
+    """
+
+    model_root = ROOT_DIR / "faster-whisper-models"
+    model_dir = model_root / model_size
+
+    if model_dir.exists():
+        logger.debug("Using existing model dir: %s", model_dir)
+        return model_dir
+
+    isMounted = os.getenv("WHISPER_MOUNTED", "true").lower() == "true"
+    if isMounted:
+        logger.error("Expected mounted model dir missing: %s", model_dir)
+        raise FileNotFoundError(f"Mounted model dir missing: {model_dir}")
+
+    model_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("Downloading faster-whisper model '%s' to %s", model_size, model_dir)
+    snapshot_download(
+        repo_id=f"Systran/faster-whisper-{model_size}",
+        local_dir=str(model_dir),
+        local_dir_use_symlinks=False,
+    )
+    logger.info("Model '%s' ready at %s", model_size, model_dir)
+    return model_dir
 
 
 def transcribe_video_to_srt(
@@ -47,11 +78,10 @@ def transcribe_video_to_srt(
 
     logging.getLogger("faster_whisper.transcribe").setLevel(logging.INFO)
     logger.info("Transcribing: %s with model: %s", video_file_path.name, env_model_size)
-    model_dir = ROOT_DIR / "faster-whisper-models" / f"{env_model_size}"
-    if not model_dir.exists():
-        logger.error(f"Local faster-whisper model not found: {model_dir}")
-        raise FileNotFoundError(f"Local faster-whisper model not found: {model_dir}")
+
+    model_dir = _ensure_model_dir(env_model_size)
     whisper_model = WhisperModel(str(model_dir), device="cpu", compute_type="int8")
+
     pipeline = BatchedInferencePipeline(whisper_model)
 
     segments, _ = pipeline.transcribe(audio=str(video_file_path), batch_size=8, log_progress=True)
