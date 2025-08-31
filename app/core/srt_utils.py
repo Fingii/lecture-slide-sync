@@ -1,4 +1,5 @@
 import re
+import os
 
 from datetime import timedelta
 from typing import TypedDict
@@ -27,7 +28,6 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 
 def transcribe_video_to_srt(
     video_file_path: Path,
-    model_size: str = "base",
 ) -> str:
     """
     Transcribes a video file to SRT format using faster-whisper with batched inference.
@@ -40,13 +40,14 @@ def transcribe_video_to_srt(
 
     Args:
         video_file_path: Path to the input video file.
-        model_size: Model variant to use (tiny, base, small, medium, large).
     """
     import logging
 
+    env_model_size = os.getenv("WHISPER_MODEL", "base").strip()
+
     logging.getLogger("faster_whisper.transcribe").setLevel(logging.INFO)
-    logger.info("Transcribing: %s with model: %s", video_file_path.name, model_size)
-    model_dir = ROOT_DIR / "faster-whisper-models" / f"{model_size}"
+    logger.info("Transcribing: %s with model: %s", video_file_path.name, env_model_size)
+    model_dir = ROOT_DIR / "faster-whisper-models" / f"{env_model_size}"
     if not model_dir.exists():
         logger.error(f"Local faster-whisper model not found: {model_dir}")
         raise FileNotFoundError(f"Local faster-whisper model not found: {model_dir}")
