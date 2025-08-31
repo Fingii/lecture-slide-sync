@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from functools import cached_property
-import re
 
 import cv2
 import numpy as np
 from pytesseract import pytesseract  # type: ignore
 
-from hashing_utils import compute_phash
-from image_utils import add_black_border
+from app.core.hashing_utils import compute_phash
+from app.core.image_utils import add_black_border
+from logs.logging_config import logger
 
 
 @dataclass
@@ -51,6 +51,7 @@ class VideoFrame:
         contours: tuple[np.ndarray, ...] = tuple(contours_sequence)
 
         if not contours:
+            logger.warning(f"No contours found in frame {self.frame_number}")
             raise ValueError("No contours found for ROI detection.")
 
         largest_contour: np.ndarray = max(contours, key=cv2.contourArea)
@@ -72,6 +73,11 @@ class VideoFrame:
         largest_contour_area: int = largest_contour_width * largest_contour_height
 
         if largest_contour_width < 500 or largest_contour_height < 500 or largest_contour_area < 5000:
+            logger.warning(
+                f"Small ROI detected in frame {self.frame_number} "
+                f"(w: {largest_contour_width}, h: {largest_contour_height}, "
+                f"area: {largest_contour_width * largest_contour_height})"
+            )
             raise ValueError("Detected ROI is too small to be valid.")
 
         img_height, img_width = self.full_frame.shape[:2]
@@ -148,7 +154,7 @@ class VideoFrame:
         Returns:
             A string composed only of words with OCR confidence >= 80.
         """
-        from ocr_keyword_detector import filter_words_by_confidence
+        from app.core.ocr_keyword_detector import filter_words_by_confidence
 
         confident_words: set[str] = filter_words_by_confidence(
             self.ocr_data_roi_frame, confidence_threshold=80

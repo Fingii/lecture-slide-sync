@@ -1,0 +1,57 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s.%(msecs)03d [%(levelname)s] %(message)s",
+            "datefmt": "%d-%m-%Y %H:%M:%S"
+        }
+    },
+    "handlers": {
+        "stdout": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "formatter": "standard",
+            "stream": "ext://sys.stdout"
+        },
+        "auto_slide_tracker_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "level": "DEBUG",
+            "formatter": "standard",
+            "filename": "logs/auto_slide_tracker.log",
+            "maxBytes": 10485760,
+            "backupCount": 3,
+            "encoding": "utf8"
+        },
+        "fastapi_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "level": "DEBUG",
+            "formatter": "standard",
+            "filename": "logs/fastapi.log",
+            "maxBytes": 10485760,
+            "backupCount": 3,
+            "encoding": "utf8"
+        }
+    },
+    "loggers": {
+        "root": {
+            "handlers": ["stdout"],
+            "level": "INFO"
+        },
+        "auto_slide_tracker": {
+            "handlers": ["auto_slide_tracker_file"],
+            "level": "DEBUG",
+            "propagate": true
+        },
+        "faster_whisper": {
+            "handlers": ["auto_slide_tracker_file"],
+            "level": "INFO",
+            "propagate": true
+        },
+        "hypercorn": {
+            "handlers": ["fastapi_file"],
+            "level": "DEBUG",
+            "propagate": false
+        }
+    }
+}

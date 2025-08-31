@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 
-from hashing_utils import compute_hamming_distance
-from lecture_slides import LectureSlides
-from video_frame import VideoFrame
+from app.core.hashing_utils import compute_hamming_distance
+from app.models.lecture_slides import LectureSlides
+from app.models.video_frame import VideoFrame
 
 
 @dataclass

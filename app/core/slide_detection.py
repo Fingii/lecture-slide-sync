@@ -1,12 +1,13 @@
 import re
 
-from process_srt import merge_srt_by_slide_ranges
-from video_utils import generate_video_frame, get_video_fps
-from ocr_keyword_detector import are_all_keywords_present
-from video_frame import VideoFrame
-from lecture_slides import LectureSlides
-from slide_tracker import SlideTracker
+from app.core.video_utils import generate_video_frame, get_video_fps
+from app.core.ocr_keyword_detector import are_all_keywords_present
+from app.models.video_frame import VideoFrame
+from app.models.lecture_slides import LectureSlides
+from app.models.slide_tracker import SlideTracker
+from logs.logging_config import logger
 
+from pathlib import Path
 from thefuzz import fuzz  # type: ignore
 
 
@@ -42,7 +43,7 @@ def normalize_text(
 
 
 def detect_first_slide(
-    video_file_path: str, keywords_to_be_matched: set[str], max_seconds: int = 30
+    video_file_path: Path, keywords_to_be_matched: set[str], max_seconds: int = 30
 ) -> VideoFrame:
     """
     Scans the beginning of a lecture video to find the first visible slide
@@ -64,18 +65,25 @@ def detect_first_slide(
     Raises:
         RuntimeError: If no matching slide is found within the specified time window.
     """
+    logger.info("Searching for first valid slide (max %d seconds)", max_seconds)
     fps: float = get_video_fps(video_file_path)
     max_attempts: int = int(max_seconds * fps)
 
     for video_frame in generate_video_frame(
-        video_path=video_file_path,
+        video_file_path=video_file_path,
         frames_step=1,
     ):
         if video_frame.frame_number >= max_attempts:
             break
         if are_all_keywords_present(video_frame, keywords_to_be_matched):
+            logger.info(
+                "First slide found at frame %d (%.2fs)",
+                video_frame.frame_number,
+                video_frame.frame_timestamp_seconds,
+            )
             return video_frame
 
+    logger.warning("No slide found in first %d seconds of video", max_seconds)
     raise RuntimeError(f"No slide detected within the first {max_seconds} seconds of the video.")
 
 
@@ -108,6 +116,12 @@ def is_slide_change_detected(
 
     # Definite match — no OCR needed, helpful for image slides, where PDF text is not extractable from images
     if most_similar_slide_index_hamming_distance < 2:
+        logger.info(
+            "Definitive match: slide %d at frame %d (%.2fs)",
+            most_similar_slide_index + 1,
+            video_frame.frame_number,
+            video_frame.frame_timestamp_seconds,
+        )
         slide_tracker.mark_slide_as_seen(most_similar_slide_index)
         return True
 
@@ -119,6 +133,13 @@ def is_slide_change_detected(
 
     similarity = fuzz.token_set_ratio(normalized_pdf_page_text, normalized_ocr_text)
     if similarity >= 75:
+        logger.info(
+            "Likely match: slide %d detected at frame %d (%.2fs), similarity %.2f%%",
+            most_similar_slide_index + 1,
+            video_frame.frame_number,
+            video_frame.frame_timestamp_seconds,
+            similarity,
+        )
         slide_tracker.mark_slide_as_seen(most_similar_slide_index)
         return True
 
@@ -126,8 +147,8 @@ def is_slide_change_detected(
 
 
 def detect_slide_transitions(
-    video_file_path: str,
-    pdf_file_path: str,
+    video_file_path: Path,
+    pdf_file_path: Path,
     keywords_to_be_matched: set[str],
     sampling_interval_seconds: float = 1.0,
 ) -> dict[int, float]:
@@ -149,6 +170,16 @@ def detect_slide_transitions(
     Returns:
         A dictionary mapping 1-based slide indices to their start timestamps in seconds.
     """
+    logger.info(
+        "Starting slide detection algorithm for video: %s with PDF: %s",
+        video_file_path.name,
+        pdf_file_path.name,
+    )
+    logger.debug(
+        "Parameters - Keywords: %s, Sampling interval: %.2f seconds",
+        keywords_to_be_matched,
+        sampling_interval_seconds,
+    )
     first_slide_video_frame: VideoFrame = detect_first_slide(video_file_path, keywords_to_be_matched)
 
     # RoI precomputed once since it's constant, avoiding redundant work per frame
@@ -157,12 +188,12 @@ def detect_slide_transitions(
     lecture_slides: LectureSlides = LectureSlides(pdf_file_path)
     slide_tracker: SlideTracker = SlideTracker(lecture_slides)
 
-    fps = get_video_fps(video_file_path)
-    frame_steps = max(1, int(round(fps * sampling_interval_seconds)))
+    fps: float = get_video_fps(video_file_path)
+    frame_steps: int = max(1, int(round(fps * sampling_interval_seconds)))
 
     slide_changes_seconds: dict[int, float] = {}  # slide_index (1-based): timestamp_seconds
     for video_frame in generate_video_frame(
-        video_path=video_file_path,
+        video_file_path=video_file_path,
         frames_step=frame_steps,
         start_frame_number=first_slide_video_frame.frame_number,
         roi_coordinates=precomputed_roi,
@@ -170,22 +201,7 @@ def detect_slide_transitions(
         if is_slide_change_detected(video_frame, slide_tracker, keywords_to_be_matched):
             slide_changes_seconds[slide_tracker.current_slide_index + 1] = video_frame.frame_timestamp_seconds
 
-    return slide_changes_seconds
-
-
-def detect_slide_transition_and_merge_srt(
-    video_file_path: str,
-    pdf_file_path: str,
-    srt_file_path: str,
-    keywords_to_be_matched: set[str],
-    sampling_interval_seconds: float = 1.0,
-) -> str:
-
-    slide_changes = detect_slide_transitions(
-        video_file_path,
-        pdf_file_path,
-        keywords_to_be_matched,
-        sampling_interval_seconds,
+    logger.info(
+        "Slide detection algorithm finished: Detected %d slide transitions", len(slide_changes_seconds)
     )
-
-    return merge_srt_by_slide_ranges(srt_file_path, slide_changes)
+    return slide_changes_seconds

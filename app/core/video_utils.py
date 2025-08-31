@@ -1,14 +1,16 @@
 from typing import Generator
-from video_frame import VideoFrame
+from app.models.video_frame import VideoFrame
+from logs.logging_config import logger
 
 from fractions import Fraction
+from pathlib import Path
 
 import numpy as np
 import av
 
 
 def generate_video_frame(
-    video_path: str,
+    video_file_path: Path,
     frames_step: int = 1,
     start_frame_number: int = 0,
     roi_coordinates: tuple[int, int, int, int] | None = None,
@@ -21,7 +23,7 @@ def generate_video_frame(
     specified frame index.
 
     Args:
-        video_path: Path to the input video file.
+        video_file_path: Path to the input video file.
         frames_step: Number of frames to skip between each yield.
         start_frame_number: The initial frame number to begin reading from.
         roi_coordinates: Precomputed ROI coordinates to use for all frames.
@@ -30,19 +32,30 @@ def generate_video_frame(
     Yields:
         VideoFrame objects containing the frame image and its metadata.
     """
-    with av.open(video_path) as container:
+    logger.debug(
+        "Generating frames from %s (start: %d, step: %d)",
+        video_file_path.name,
+        start_frame_number,
+        frames_step,
+    )
+    with av.open(video_file_path) as container:
         video_stream: av.video.stream.VideoStream = container.streams.video[0]
         video_stream.thread_type = "AUTO"
 
         if video_stream.average_rate is None:
+            logger.error("Missing average_rate in video stream")
             raise ValueError("video_stream.average_rate is None")
         if video_stream.time_base is None:
+            logger.error("Missing time_base in video stream")
             raise ValueError("video_stream.time_base is None")
 
         # Convert frame index to pts
         start_frame_second: float = start_frame_number / float(video_stream.average_rate)
         start_frame_pts: int = int(start_frame_second / float(video_stream.time_base))
 
+        logger.debug(
+            "Seeking to frame %d (%.2fs, pts=%d)", start_frame_number, start_frame_second, start_frame_pts
+        )
         container.seek(
             offset=start_frame_pts,
             backward=True,
@@ -77,12 +90,12 @@ def generate_video_frame(
             )
 
 
-def get_video_fps(video_path: str) -> float:
+def get_video_fps(video_file_path: Path) -> float:  # type: ignore
     """
     Retrieves the average frames per second (FPS) of a video file.
 
     Args:
-        video_path: Path to the input video file.
+        video_file_path: Path to the input video file.
 
     Returns:
         The average FPS as a float.
@@ -90,15 +103,14 @@ def get_video_fps(video_path: str) -> float:
     Raises:
         ValueError: If the video stream does not contain average_rate metadata.
     """
-
-    fps: float = 25
-
-    with av.open(video_path) as container:
+    logger.debug("Getting FPS from video: %s", video_file_path.name)
+    with av.open(video_file_path) as container:
         video_stream: av.video.stream.VideoStream = container.streams.video[0]
         average_rate: Fraction | None = video_stream.average_rate
 
         if average_rate is None:
+            logger.error("Missing average_rate in video: %s", video_file_path.name)
             raise ValueError("Video stream has no average_rate metadata.")
         fps = float(average_rate)
-
-    return fps
+        logger.debug("Detected FPS: %.2f", fps)
+        return fps

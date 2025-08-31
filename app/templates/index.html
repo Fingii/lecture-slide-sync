@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lecture Sync Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container py-4">
+        <header class="mb-5 text-center">
+            <h1 class="display-5">Lecture Slide Sync Tool</h1>
+            <p class="lead">Automatically synchronize your lecture videos with presentation slides</p>
+        </header>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+
+                        <!-- Features & Overview Section -->
+                        <div class="row mb-4">
+                          <!-- Left: Overview -->
+                          <div class="col-md-6 mb-3 mb-md-0">
+                            <div class="card h-100 shadow-sm">
+                              <div class="card-header bg-primary bg-opacity-10">
+                                <h5 class="mb-0 d-flex align-items-center">
+                                  <i class="bi bi-magic me-2 text-primary"></i> What It Does
+                                </h5>
+                              </div>
+                              <div class="card-body">
+                                <p class="mb-3">Automatically synchronizes lecture videos with PDF slides to generate subtitle (srt) files where:</p>
+                                <ul class="mb-3">
+                                  <li>Captions are matched to the slide shown during speaking</li>
+                                  <li>Timestamps indicate when each slide appears</li>
+                                </ul>
+                                <div class="alert alert-primary bg-opacity-10 mb-0">
+                                  <i class="bi bi-lightbulb me-2"></i>
+                                  Ideal for chatbot context enrichment, lecture analysis etc.
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Right: Features -->
+                          <div class="col-md-6">
+                            <div class="card h-100 shadow-sm">
+                              <div class="card-header bg-warning bg-opacity-10">
+                                <h5 class="mb-0 d-flex align-items-center">
+                                  <i class="bi bi-lightning-charge me-2 text-warning"></i> Key Features
+                                </h5>
+                              </div>
+                              <div class="card-body">
+                                <div class="d-flex mb-3">
+                                  <div class="me-3 text-warning">
+                                    <i class="bi bi-camera-reels fs-4"></i>
+                                  </div>
+                                  <div>
+                                    <h6 class="mb-1">Slide Change Detection</h6>
+                                    <p class="small text-muted mb-0">Accurately detects when slides change in lecture videos</p>
+                                  </div>
+                                </div>
+
+                                <div class="d-flex mb-3">
+                                  <div class="me-3 text-warning">
+                                    <i class="bi bi-file-text fs-4"></i>
+                                  </div>
+                                  <div>
+                                    <h6 class="mb-1">PDF Text Matching</h6>
+                                    <p class="small text-muted mb-0">Matches video content with PDF slide text</p>
+                                  </div>
+                                </div>
+
+                                <div class="d-flex">
+                                  <div class="me-3 text-warning">
+                                    <i class="bi bi-collection fs-4"></i>
+                                  </div>
+                                  <div>
+                                    <h6 class="mb-1">Batch Processing</h6>
+                                    <p class="small text-muted mb-0">Supports both single lectures and batch ZIP processing</p>
+                                  </div>
+                                </div>
+
+                                <div class="d-flex mt-3">
+                                  <div class="me-3 text-warning">
+                                    <i class="bi bi-bookmark-check fs-4"></i>
+                                  </div>
+                                  <div>
+                                    <h6 class="mb-1">Video with Chapters</h6>
+                                    <p class="small text-muted mb-0">
+                                      Optionally export an <code>.mp4</code> with chapter markers for each detected slide.
+                                    </p>
+                                  </div>
+                                </div>
+
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+
+                        <!-- How to use -->
+                        <div class="info-card mb-4">
+                          <h3><i class="bi bi-gear me-2"></i> How to Use</h3>
+                          <div class="accordion" id="howItWorksAccordion">
+
+                            <!-- Important Processing Notes -->
+                            <div class="accordion-item">
+                            <h2 class="accordion-header">
+                              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseKnow">
+                                <i class="bi bi-info-circle me-2"></i> Important Processing Notes
+                              </button>
+                            </h2>
+                            <div id="collapseKnow" class="accordion-collapse collapse">
+                              <div class="accordion-body">
+                                <div class="accordion-body">
+
+                                  <!-- PDF Requirements -->
+                                  <div class="mb-3">
+                                    <h6 class="d-flex align-items-center">
+                                      <i class="bi bi-file-earmark-pdf me-2 text-primary"></i> PDF Requirements
+                                    </h6>
+                                    <ul class="mb-0 ps-4">
+                                      <li class="mb-1">
+                                        Only slides that exist in the uploaded PDF can be detected. If your video contains additional content (e.g. handwritten slides, whiteboards, live demos) that isn't in the PDF, it will be <strong>ignored</strong> and <strong>grouped under the previous detected slide</strong> the timestamp continues until the next valid slide change.
+                                      </li>
+                                      <li>
+                                        <strong>Must contain extractable text</strong> - Scanned/image-only PDFs won't work
+                                      </li>
+                                    </ul>
+                                  </div>
+
+                                  <!-- Video Requirements -->
+                                  <div class="mb-3">
+                                    <h6 class="d-flex align-items-center">
+                                      <i class="bi bi-camera-video me-2 text-primary"></i> Video Requirements
+                                    </h6>
+                                    <ul class="mb-0 ps-4">
+                                      <li class="mb-2">
+                                        The slide <strong>MUST</strong> be <strong>fully visible</strong> as a single clear rectangle. It's fine if other elements (like the professor or chat window) are:
+                                        <ul class="mt-1 mb-1 ps-3">
+                                          <li class="text-success">Fully outside the slide area</li>
+                                          <li class="text-success"> Inside the slide but not blocking important content</li>
+                                          <li class="text-danger"><strong>Not</strong> overlapping the slide border (e.g., half in / half out)</li>
+                                        </ul>
+                                        This is important because the tool tries to detect the slide as one solid rectangular block.
+                                      </li>
+                                    </ul>
+                                  </div>
+
+                                  <!-- Detection Behavior -->
+                                    <div class="mb-3">
+                                      <h6 class="d-flex align-items-center">
+                                        <i class="bi bi-search me-2 text-primary"></i> Detection Behavior
+                                      </h6>
+                                      <ul class="mb-0 ps-4">
+                                        <li class="mb-1">
+                                          <strong>Skips intros automatically</strong> – the tool waits until the first real slide from your uploaded PDF is visible (ignoring black screens, Zoom/Webex interfaces, etc.).
+                                        </li>
+                                        <li class="mb-1">
+                                          Because detection is based on <strong>matching video frames against the full PDF slides</strong>, slides with <strong>animations or bullet-by-bullet reveals</strong> are usually only recognized once the slide is completely visible, i.e. when all bullet points or elements are shown.
+                                        </li>
+                                        <li>
+                                          <strong>Best results</strong> occur with static slides that match the PDF exactly and appear clearly at slide start.
+                                        </li>
+                                      </ul>
+                                    </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                            <!-- Step by Step -->
+                            <div class="accordion-item">
+                              <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInstructions">
+                                  <i class="bi bi-sliders me-2"></i> Step-by-Step Instructions
+                                </button>
+                              </h2>
+                              <div id="collapseInstructions" class="accordion-collapse collapse">
+                                <div class="accordion-body">
+                                  <ol class="mb-3">
+                                    <li><strong>Prepare</strong> your files:
+                                      <ul class="mt-2">
+                                        <li><strong>Single Lecture:</strong> Upload a video file <code>(.mp4, .mov, etc.)</code> and matching <code>PDF</code></li>
+                                        <li><strong>Batch:</strong> Upload a <code>.zip</code> containing pairs of video and PDF files</li>
+                                      </ul>
+                                    </li>
+                                    <li><strong>Configure</strong> the detection parameters</li>
+                                    <li><strong>Start processing</strong> and receive your synchronized output(s)</li>
+                                  </ol>
+
+                                  <div class="row">
+                                    <div class="col-md-6">
+                                      <div class="alert alert-info h-100">
+                                        <i class="bi bi-person-video2 me-2"></i>
+                                        <strong>Single Lecture:</strong> Ideal for quick syncs<br>
+                                        Upload 1 video + 1 PDF.
+                                      </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                      <div class="alert alert-warning h-100">
+                                        <i class="bi bi-collection me-2"></i>
+                                        <strong>Batch Mode:</strong> For multiple lectures<br>
+                                        Use a ZIP with matched files.
+                                        <div class="mt-2 bg-light p-2 rounded small">
+                        <pre class="mb-0">lectures.zip
+├── lecture1.mp4
+├── lecture1.pdf
+├── lecture2.mp4
+└── lecture2.pdf</pre>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+
+
+                        <div class="accordion" id="knowAccordion">
+
+
+                        <br>
+
+                        <!-- Step Indicator -->
+                        <div class="step-indicator">
+                            <div class="step-line"></div>
+                            <div class="step-line-progress" id="progressLine"></div>
+                            <div class="step active" id="step1">
+                                <div class="step-number">1</div>
+                                <div class="step-title">Upload Files</div>
+                            </div>
+                            <div class="step" id="step2">
+                                <div class="step-number">2</div>
+                                <div class="step-title">Parameters</div>
+                            </div>
+                            <div class="step" id="step3">
+                                <div class="step-number">3</div>
+                                <div class="step-title">Process</div>
+                            </div>
+                        </div>
+
+                        <!-- Step 1: Upload -->
+                        <div class="step-content active" id="step1-content">
+                            <h3 class="mb-4">Upload Your Files</h3>
+                            <div class="upload-area" id="dropZone">
+                                <i class="bi bi-cloud-arrow-up fs-1 mb-3"></i>
+                                <p>Drag & drop your files here or select files</p>
+                                <input type="file" id="fileInput" class="d-none" multiple accept="video/*,.pdf,.zip">
+                                <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                                    Select Files
+                                </button>
+                            </div>
+
+                            <div class="selected-files mb-4">
+                                <div id="fileInfo" class="d-none"></div>
+                            </div>
+
+                            <div class="d-flex justify-content-end">
+                                <button id="nextToStep2" class="btn btn-primary" disabled>Next: Parameters <i class="bi bi-arrow-right"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Parameters -->
+                        <div class="step-content" id="step2-content">
+                            <h3 class="mb-4">Configure Processing</h3>
+
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5 class="mb-0 d-flex align-items-center">
+                                        <i class="bi bi-clock-history me-2 text-primary"></i>
+                                        Slide Detection Settings
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="samplingInterval" class="form-label d-flex align-items-center">
+                                            Sampling Interval (seconds)
+                                            <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip"
+                                               title="Frequency of slide change checks (lower = more precise but slower, 0.1 = every frame)"></i>
+                                        </label>
+                                        <input type="range" class="form-range mb-2" min="0.1" max="5" step="0.1" id="samplingIntervalRange" value="1.0">
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="samplingInterval" value="1.0" step="0.1" min="0.5" max="5">
+                                            <span class="input-group-text">seconds</span>
+                                        </div>
+                                        <div class="form-text">
+                                            <small>Recommended: 0.1-5 seconds. Default: <span id="intervalValue">1.0</span>s</small>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3 form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="generateChapters" checked>
+                                        <label class="form-check-label" for="generateChapters">
+                                            Generate Video Chapters
+                                            <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip"
+                                               title="Creates chapter markers in the output video at each slide change"></i>
+                                        </label>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label d-flex align-items-center">
+                                            Slide Start Keywords
+                                            <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip"
+                                               title="Keywords that appear on your first real slide in the video (clear footer keywords work best)"></i>
+                                        </label>
+                                        <div id="keywordsContainer" class="mb-2">
+                                            <div class="d-flex flex-wrap gap-2" id="keywordsTags">
+                                                <!-- Keywords will be added here -->
+                                            </div>
+                                            <div class="input-group mt-2">
+                                                <input type="text" class="form-control" id="keywordInput" placeholder="Add keyword (e.g. university name)">
+                                                <button class="btn btn-outline-primary" type="button" id="addKeywordBtn">
+                                                    <i class="bi bi-plus"></i> Add
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="form-text">
+                                            <small>Example: "FH", AACHEN", "UNIVERSITY", "OF", "APPLIED", "SCIENCES" (keywords from your slide footer work best)</small>
+                                        </div>
+                                        <input type="hidden" id="keywords" name="keywords" value="">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <button id="backToStep1" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</button>
+                                <button id="nextToStep3" class="btn btn-primary">Continue to Processing <i class="bi bi-arrow-right"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Process -->
+                        <div class="step-content" id="step3-content">
+                            <h3 class="mb-4">Process Your Files</h3>
+
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Review Your Settings</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <strong>Files:</strong>
+                                        <div id="reviewFileNames" class="text-muted"></div>
+                                    </div>
+                                    <div>
+                                        <strong>Sampling Interval:</strong>
+                                        <div id="reviewInterval" class="text-muted"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                      <strong>Video Chapters:</strong>
+                                      <div id="reviewChapters" class="text-muted"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <strong>Keywords:</strong>
+                                        <div id="reviewKeywords" class="text-muted"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <button id="backToStep2" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</button>
+                                <button id="processBtn" class="btn btn-primary">Start Processing <i class="bi bi-gear"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Processing -->
+                        <div class="step-content" id="processing-content">
+                            <h3 class="mb-4">Processing Your Files</h3>
+                            <div class="card mb-4">
+                                <div class="card-body text-center">
+                                    <div class="progress mb-3">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" id="processingBar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <p id="processingStatus">Preparing to process your files...</p>
+                                </div>
+                            </div>
+                            <button id="cancelProcessing" class="btn btn-outline-danger">Cancel Processing</button>
+                        </div>
+
+                        <!-- Results -->
+                        <div class="step-content" id="results-content">
+                            <h3 class="mb-4">Processing Complete</h3>
+                            <div class="card mb-4">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-check-circle-fill text-success fs-1 mb-3"></i>
+                                    <p class="lead">Your files have been processed successfully!</p>
+                                    <p>Click the button below to download your results.</p>
+                                    <a id="downloadLink" class="btn btn-success btn-lg mt-3" download>
+                                        <i class="bi bi-download me-2"></i>Download Results
+                                    </a>
+                                </div>
+                            </div>
+                            <button id="newProcess" class="btn btn-primary">Start New Process</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Section -->
+        <div class="mt-4 pt-3 text-center small" style="position: relative; z-index: 10;">
+            <div class="d-flex flex-column flex-md-row justify-content-center align-items-center gap-2 text-muted">
+                <span> Sync Tool v4.0.0 </span>
+                <span class="d-none d-md-inline">•</span>
+                <span>Created by Dyar Jankir</span>
+                <span class="d-none d-md-inline">•</span>
+                <a href="https://git.fh-aachen.de/dj7070s/auto-slide-tracker"
+                   target="_blank"
+                   class="text-decoration-none"
+                   style="color: #0d6efd;">
+                    <i class="bi bi-gitlab"></i> Gitlab-Repo
+                </a>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
