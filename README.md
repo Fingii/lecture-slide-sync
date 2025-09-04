@@ -26,7 +26,7 @@ Syncs lecture videos with their PDF slides to produce slide-grouped subtitles an
 
 <p align="center">
   <video
-    src="https://github.com/user-attachments/assets/ee9a1d85-dc5e-4cdd-a1f7-6ea77f971fe8"
+    src="https://github.com/user-attachments/assets/43a29c4e-a46a-4a69-a544-562132fa5868"
     controls
     muted
     playsinline
