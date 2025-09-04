@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
  && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /auto-slide-tracker
+WORKDIR /lecture-slide-sync
 
 RUN mkdir -p logs media && chmod a+rw logs media
 
