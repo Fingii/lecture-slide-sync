@@ -5,6 +5,7 @@ from datetime import timedelta
 from typing import TypedDict
 from faster_whisper import WhisperModel, BatchedInferencePipeline  # type: ignore
 from pathlib import Path
+
 from huggingface_hub import snapshot_download
 
 from logs.logging_config import logger
@@ -84,7 +85,9 @@ def transcribe_video_to_srt(
 
     pipeline = BatchedInferencePipeline(whisper_model)
 
-    segments, _ = pipeline.transcribe(audio=str(video_file_path), batch_size=8, log_progress=True)
+    segments, _ = pipeline.transcribe(
+        audio=str(video_file_path), without_timestamps=False, word_timestamps=True, log_progress=True
+    )
 
     srt_lines = []
     for i, segment in enumerate(segments, start=1):
@@ -200,14 +203,23 @@ def merge_srt_by_slide_ranges(
         if end_time <= start_time:
             continue
 
-        block_texts: list[str] = [e["text"] for e in srt_entries if start_time <= e["start"] < end_time]
+        # assign by midpoint so each cue goes to exactly one slide
+        block_entries: list[SRTEntry] = [
+            e for e in srt_entries if start_time <= (e["start"] + e["end"]) / 2 < end_time
+        ]
+        if not block_entries:
+            continue  # skip empty slide blocks
+
+        # clamp the block bounds to the actual cues we included
+        block_start: float = max(start_time, block_entries[0]["start"])
+        block_end: float = min(end_time, block_entries[-1]["end"])
 
         merged_blocks.append(
             {
-                "index": i + 1,
-                "start": start_time,
-                "end": end_time,
-                "text": "\n".join(block_texts),
+                "index": slide_index - 1,
+                "start": block_start,
+                "end": block_end,
+                "text": "\n".join(e["text"] for e in block_entries),
             }
         )
 
