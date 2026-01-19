@@ -11,8 +11,8 @@ class SlideTracker:
     Tracks slide transitions in a lecture video by matching video frame hashes
     against precomputed hashes of slides from a corresponding PDF.
 
-    This class maintains internal state to ensure only forward slide transitions
-    are recognized and provides utility methods to match frames and update state.
+    This class maintains only the current detected slide. Re-detections of the
+    same slide at a later timestamp are allowed
 
     Attributes:
         lecture_slides: A LectureSlides instance providing slide images and their hashes.
@@ -22,7 +22,6 @@ class SlideTracker:
 
     lecture_slides: LectureSlides
     current_slide_index: int = field(init=False, default=-1)
-    seen_slide_indices: set[int] = field(init=False, default_factory=set)
     _max_hamming_distance: int = 8
 
     def find_most_similar_slide_index(self, video_frame: VideoFrame) -> tuple[int, float] | None:
@@ -49,9 +48,10 @@ class SlideTracker:
             return most_similar_slide_index, min_hamming_distance
         return None
 
-    def mark_slide_as_seen(self, index: int) -> None:
-        self.seen_slide_indices.add(index)
+    def set_current(self, index: int) -> None:
+        """Set the currently active slide index."""
         self.current_slide_index = index
 
-    def has_seen_slide(self, index: int) -> bool:
-        return index in self.seen_slide_indices
+    def is_current(self, index: int) -> bool:
+        """Return true if the given index equals the current slide."""
+        return self.current_slide_index == index
