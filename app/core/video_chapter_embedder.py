@@ -3,7 +3,7 @@ from pathlib import Path
 from logs.logging_config import logger
 
 
-def generate_ffmpeg_metadata(slide_changes: dict[int, float]) -> str:
+def generate_ffmpeg_metadata(slide_changes: list[tuple[int, float]]) -> str:
     """
     Generate FFmpeg metadata text for chapter embedding.
 
@@ -14,10 +14,12 @@ def generate_ffmpeg_metadata(slide_changes: dict[int, float]) -> str:
         A string containing FFMETADATA1-compliant chapter data.
     """
     logger.debug(f"Generating FFmpeg metadata for {len(slide_changes)} slide changes")
-    chapters = sorted((timestamp, idx) for idx, timestamp in slide_changes.items())
+    # list of (slide_index, timestamp_seconds), duplicates allowed
+    chapters = sorted(slide_changes, key=lambda x: x[1])
 
     metadata = ";FFMETADATA1\n"
-    for (timestamp, slide_index), (next_timestamp, _) in zip(chapters, chapters[1:] + [(None, None)]):
+    for i, (slide_index, timestamp) in enumerate(chapters):
+        next_timestamp = chapters[i + 1][1] if i + 1 < len(chapters) else None
         metadata += f"""
 [CHAPTER]
 TIMEBASE=1/1000
@@ -30,7 +32,7 @@ title=Slide {slide_index}
 
 
 def generate_video_with_chapters(
-    slide_changes: dict[int, float],
+    slide_changes: list[tuple[int, float]],
     input_video_path: Path,
     output_dir: Path,
 ) -> Path:

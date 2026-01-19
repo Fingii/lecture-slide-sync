@@ -178,7 +178,7 @@ def parse_srt_string(srt_content: str) -> list[SRTEntry]:
 
 def merge_srt_by_slide_ranges(
     srt_content: str,
-    slide_timestamps: dict[int, float],
+    slide_timestamps: list[tuple[int, float]],
 ) -> str:
     """
     Merge SRT entries into slide-aligned blocks based on slide start timestamps.
@@ -193,7 +193,7 @@ def merge_srt_by_slide_ranges(
     logger.info("Merging SRT file with %d slide timestamps", len(slide_timestamps))
     srt_entries: list[SRTEntry] = parse_srt_string(srt_content)
 
-    sorted_slide_entries: list[tuple[int, float]] = sorted(slide_timestamps.items(), key=lambda item: item[1])
+    sorted_slide_entries: list[tuple[int, float]] = sorted(slide_timestamps, key=lambda item: item[1])
     video_end_time: float = max(entry["end"] for entry in srt_entries)
 
     merged_blocks: list[SlideBlock] = []
@@ -216,7 +216,7 @@ def merge_srt_by_slide_ranges(
 
         merged_blocks.append(
             {
-                "index": slide_index - 1,
+                "index": slide_index,
                 "start": block_start,
                 "end": block_end,
                 "text": "\n".join(e["text"] for e in block_entries),

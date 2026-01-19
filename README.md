@@ -575,9 +575,7 @@ Use either the **Web UI** or **HTTP API**. Both accept the same parameters (belo
    **no change** (still on the previous slide).
 
 5. **Record slide start times**
-   For each newly detected slide, store a mapping `slide_index → start_time` (seconds). End times are derived
-   later when merging SRT (next slide’s start, or the video end for the last slide).
-
+     For each detected slide change, append `(slide_index, start_time)` (seconds) to a list. If a slide is revisited later, it can appear multiple times. End times are derived later when merging SRT (next slide’s start, or the video end for the last slide).
 6. **Transcribe and merge by slide**
    Audio is transcribed with [faster-whisper](https://github.com/SYSTRAN/faster-whisper).
    The many short ASR segments are **merged into one SRT block per slide interval**, yielding slide-grouped
@@ -649,12 +647,12 @@ flowchart LR
     P1 --> D1{Found similar 
     slide?}
     D1 -->|no| F0([return False])
-    D1 -->|yes| D2{Slide already 
-    seen?}
+    D1 -->|yes| D2{Same as 
+    current slide?}
     D2 -->|yes| F0
     D2 -->|no| D3{hamming distance < 2}
     D3 -->|yes| M1[Definitive visual match,
-    mark slide as seen] --> T1([return True])
+    set as current slide] --> T1([return True])
     D3 -->|no| G1[Get PDF page text and frame OCR text 
     and normalize]
     G1 --> R1["Check if PDF and OCR 
@@ -662,8 +660,7 @@ flowchart LR
     (fuzzy token set ratio)"]
     R1 --> D4{similarity >= 75}
     D4 -->|no| F0
-    D4 -->|yes| M2[Mark slide 
-    as seen] --> T2([return True])
+    D4 -->|yes| M2[Set as current slide] --> T2([return True])
 ```
 
 <br>

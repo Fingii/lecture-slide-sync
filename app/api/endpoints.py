@@ -90,7 +90,6 @@ async def detect(
                 path=final_path,
                 media_type="application/zip" if generate_chapters else "text/plain",
                 headers={"Content-Disposition": f"attachment; filename={filename}"},
-                background=BackgroundTask(final_path.unlink, missing_ok=True),
             )
 
         except Exception as e:
@@ -152,7 +151,6 @@ async def batch_detect(
                 path=final_path,
                 media_type="application/zip",
                 headers={"Content-Disposition": "attachment; filename=batch_results.zip"},
-                background=BackgroundTask(final_path.unlink, missing_ok=True),
             )
 
         except Exception as e:

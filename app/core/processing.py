@@ -9,7 +9,7 @@ def generate_merged_srt(
     pdf_file_path: Path,
     keywords_to_be_matched: set[str],
     sampling_interval_seconds: float,
-) -> tuple[str, dict[int, float]]:
+) -> tuple[str, list[tuple[int, float]]]:
     """
     Generate merged subtitles by analyzing video and PDF slides.
 
@@ -23,7 +23,7 @@ def generate_merged_srt(
         str: Merged SRT content with slide-aligned subtitles
     """
     srt_content: str = transcribe_video_to_srt(video_file_path)
-    slide_changes: dict[int, float] = detect_slide_transitions(
+    slide_changes: list[tuple[int, float]] = detect_slide_transitions(
         video_file_path=video_file_path,
         pdf_file_path=pdf_file_path,
         keywords_to_be_matched=keywords_to_be_matched,

@@ -91,7 +91,7 @@ def is_slide_change_detected(
     video_frame: VideoFrame, slide_tracker: SlideTracker, keywords_to_ignore: set[str]
 ) -> bool:
     """
-    Determines whether the current video frame represents a new forward slide transition.
+    Determines whether the current video frame represents a new slide change
 
     The function first attempts to match the video frame to one of the PDF slides using perceptual hashing.
     If the match is highly confident (Hamming distance < 2), the slide is accepted immediately.
@@ -104,14 +104,14 @@ def is_slide_change_detected(
         keywords_to_ignore: A set of recurring words to exclude during text comparison (e.g., university names, headers).
 
     Returns:
-        True if a valid and unseen new slide is detected and confirmed; False otherwise.
+        True if a valid slide change (index != current) is detected and confirmed; False otherwise.
     """
     match: tuple[int, float] | None = slide_tracker.find_most_similar_slide_index(video_frame)
     if match is None:
         return False
     most_similar_slide_index, most_similar_slide_index_hamming_distance = match
 
-    if slide_tracker.has_seen_slide(most_similar_slide_index):
+    if slide_tracker.is_current(most_similar_slide_index):
         return False
 
     # Definite match — no OCR needed, helpful for image slides, where PDF text is not extractable from images
@@ -122,7 +122,7 @@ def is_slide_change_detected(
             video_frame.frame_number,
             video_frame.frame_timestamp_seconds,
         )
-        slide_tracker.mark_slide_as_seen(most_similar_slide_index)
+        slide_tracker.set_current(most_similar_slide_index)
         return True
 
     pdf_page_text: str = slide_tracker.lecture_slides.plain_texts[most_similar_slide_index]
@@ -140,7 +140,7 @@ def is_slide_change_detected(
             video_frame.frame_timestamp_seconds,
             similarity,
         )
-        slide_tracker.mark_slide_as_seen(most_similar_slide_index)
+        slide_tracker.set_current(most_similar_slide_index)
         return True
 
     return False
@@ -151,15 +151,14 @@ def detect_slide_transitions(
     pdf_file_path: Path,
     keywords_to_be_matched: set[str],
     sampling_interval_seconds: float = 1.0,
-) -> dict[int, float]:
+) -> list[tuple[int, float]]:
     """
     Detects slide transitions in a lecture video by matching video frame content to slides from a given PDF.
 
     The function begins by identifying the first frame in the video that contains a valid slide
     using OCR keyword matching. It then precomputes the region of interest (RoI) from that frame
     and uses it consistently for the rest of the video to improve performance. Each subsequent frame
-    is hashed and compared to the PDF slide hashes. A new slide is only counted as a transition
-    if it is different and comes after the last matched slide (to avoid detecting backward navigation).
+    is hashed and compared to the PDF slide hashes.
 
     Args:
         video_file_path: Path to the lecture video file.
@@ -191,7 +190,7 @@ def detect_slide_transitions(
     fps: float = get_video_fps(video_file_path)
     frame_steps: int = max(1, int(round(fps * sampling_interval_seconds)))
 
-    slide_changes_seconds: dict[int, float] = {}  # slide_index (1-based): timestamp_seconds
+    slide_changes_seconds: list[tuple[int, float]] = []  # (slide_index_1_based, timestamp_seconds)
     for video_frame in generate_video_frame(
         video_file_path=video_file_path,
         frames_step=frame_steps,
@@ -199,7 +198,9 @@ def detect_slide_transitions(
         roi_coordinates=precomputed_roi,
     ):
         if is_slide_change_detected(video_frame, slide_tracker, keywords_to_be_matched):
-            slide_changes_seconds[slide_tracker.current_slide_index + 1] = video_frame.frame_timestamp_seconds
+            slide_changes_seconds.append(
+                (slide_tracker.current_slide_index + 1, video_frame.frame_timestamp_seconds)
+            )
 
     logger.info(
         "Slide detection algorithm finished: Detected %d slide transitions", len(slide_changes_seconds)
