@@ -493,7 +493,7 @@ Use either the **Web UI** or **HTTP API**. Both accept the same parameters (belo
 <details>
 <summary><strong>Detection Behavior</strong></summary>
 
-* **Skips intros automatically** – the tool waits until the first real slide from your uploaded PDF is visible
+* **Skips intros automatically** – the tool waits until a frame containing the required OCR keywords is visible
   (ignoring black screens, Zoom/Webex interfaces, etc.).
 * Because detection is based on matching video frames against the full PDF slides, slides with animations or
   bullet-by-bullet reveals are usually only recognized **once the slide is completely visible**, i.e., when all
@@ -687,14 +687,14 @@ flowchart LR
 
 * `app/main.py` — ASGI app, static/templates mount, logging bootstrap.
 * `app/api/endpoints.py` — FastAPI routes; upload handling; ZIP/SRT lifecycle.
-* `app/core/processing.py` — Orchestrates ASR + slide detection and merges results; returns `(merged_srt: str, slide_changes: dict[int, float])`.
+* `app/core/processing.py` — Orchestrates ASR + slide detection and merges results; returns `(merged_srt: str, slide_changes: list[tuple[int, float]])`.
 * `app/core/slide_detection.py` — Orchestrates first-slide detection, ROI lock, frame→PDF matching.
 * `app/core/srt_utils.py` — Faster-Whisper transcription, SRT parse/merge, time utilities, model loading.
 * `app/core/video_chapter_embedder.py` — Writes FFmpeg chapter metadata into an `.mp4`.
 * `app/core/file_utils.py` — Save uploads, find batch pairs, ZIP helpers.
 * `app/core/hashing_utils.py` — pHash + Hamming distance helpers.
 * `app/core/image_utils.py` — Image ops (preprocessing, ROI crops) used by detection.
-* `app/core/ocr_keywords_detector.py` — OCR keyword matching for “first real slide”.
+* `app/core/ocr_keyword_detector.py` — OCR keyword matching for “first real slide”.
 * `app/models/video_frame.py` — Frame container: ROI, pHash, OCR text, timestamps.
 * `app/models/lecture_slides.py` — PDF→images, page text extraction, slide pHashes.
 * `app/models/slide_tracker.py` — Tracks current slide, already seen slides and threshold (\_max\_hamming\_distance) for slide detection.
